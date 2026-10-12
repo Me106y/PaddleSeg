@@ -316,7 +316,7 @@
           <h1>PaddleSeg 实验代码精简方案</h1>
           <p class="hero-lead">把论文《DigiBoard: Occlusion-Free Whiteboard Digitization at the Edge》(IEEE TMC) 的<b>对比实验</b>与<b>消融实验</b>两类实验，一次性映射到 PaddleSeg 的配置、模型、骨干、数据集与运行产物上；再据此把当前 5.6 万个文件、约 8 GB 的仓库收敛为一条「最小可复现」实验线。本稿只出方案、不动代码。<b>已核实「Ours」= <code>repvit_v8_7</code>（<code>MobileSegV3</code> + <code>RepViTBackboneV8</code>），而该配置当前已不在工作区</b>——见 §2.2。</p>
           <div class="meta-row" aria-label="文档元数据">
-            <span>版本 1.6（已执行）</span>
+            <span>版本 1.7（已执行）</span>
             <span>生成日期：2026-10-12</span>
             <span>依据：TMC-DigiBoard（13 页）</span>
             <span>佐证：<code>Desktop\结果.md</code>（实验日志）</span>
@@ -1008,6 +1008,7 @@ docker run --gpus all -it --rm --shm-size=8g \
               <tr><td>默认分支 / 首个提交</td><td><code>main</code> / <code>006735d2</code>「新增 Docker 训练镜像，并整理仓库到可发布状态」</td></tr>
               <tr><td>本地对应分支</td><td><code>codex/docker-training-env</code>（跟踪 <code>github/main</code>）</td></tr>
               <tr><td>推送内容</td><td>1958 个文件变更（含裁剪掉的 1853 个上游文件）；不含数据集、权重与日志</td></tr>
+              <tr><td>配套 iOS 仓库</td><td><code>https://github.com/Me106y/dashboard-ios</code>（public，分支 <code>main</code>）——§7.2 / §7.3 的端上改动（<code>DeviceStats</code>、<code>RestorationMetrics</code>、<code>eval_restoration_video.py</code>）已推送到此，提交 <code>5fe8b68</code></td></tr>
             </tbody>
           </table>
         </div>
@@ -1104,11 +1105,12 @@ docker run --gpus all -it --rm --shm-size=8g \
               <tr><td>1.4</td><td>2026-10-12</td><td><b>视频侧恢复质量评估。</b>新增 <code>dashboard-ios/scripts/eval_restoration_video.py</code>：给定「无遮挡参考图 + 处理后的视频（可选原始视频/掩膜）」逐帧输出 PSNR / SSIM / MAE 的全帧与<b>仅遮挡区</b>两个口径、帧间 MAD 与闪烁指标，落盘 CSV。已用合成数据自测通过。§7.3 记录用法、输出与两个口径前提。</td></tr>
               <tr><td>1.5</td><td>2026-10-12</td><td><b>部署与托管。</b>新增 <code>Dockerfile</code> / <code>.dockerignore</code>（GPU 训练镜像，固定 <code>PYTHONPATH</code> 并带 import 自检）；<code>.gitignore</code> 排除数据集、产物与权重，把仓库收敛为纯代码（暂存 13.3 MB）。提交 <code>006735d2</code> 并推送到新建的 public 仓库 <code>Me106y/PaddleSeg</code>（<code>main</code>）。新增 §8。</td></tr>
               <tr><td>1.6</td><td>2026-10-12</td><td><b>TODO 清单。</b>按「现在能不能做」把专家六条意见拆成 P0 / P1 / P2：P0 八项不依赖那批暂时取不到的权重（叙事重构、离线批处理通道、合成遮挡生成器、恢复质量与端到端 baseline、主动书写量化、部署日志、录制与用户研究方案），P1 四项需时间/设备/被试，P2 四项被缺失权重卡住。新增 §9。</td></tr>
+              <tr><td>1.7</td><td>2026-10-12</td><td>端上改动推送到配套仓库 <code>Me106y/dashboard-ios</code>（提交 <code>5fe8b68</code>：<code>DeviceStats</code>、<code>RestorationMetrics</code>、<code>FrameCapture.makeImage</code>、<code>eval_restoration_video.py</code>）；§8.2 补记该仓库。</td></tr>
             </tbody>
           </table>
         </div>
         <div class="document-control">
-          <span>PaddleSeg 实验代码精简方案 · v1.6（已执行）· 2026-10-12</span>
+          <span>PaddleSeg 实验代码精简方案 · v1.7（已执行）· 2026-10-12</span>
           <span>依据论文：DigiBoard (IEEE TMC) · 目标仓库：<code>Desktop\PaddleSeg</code></span>
         </div>
       </section>
