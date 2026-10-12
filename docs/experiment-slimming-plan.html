@@ -301,6 +301,7 @@
         <a href="#eval-ext">7 评测扩展</a>
         <a href="#video-eval">7.3 恢复质量评估</a>
         <a href="#deploy">8 部署与仓库</a>
+        <a href="#todo">9 TODO</a>
         <a href="#changelog">变更记录</a>
       </nav>
       <div class="sidebar-note">
@@ -315,7 +316,7 @@
           <h1>PaddleSeg 实验代码精简方案</h1>
           <p class="hero-lead">把论文《DigiBoard: Occlusion-Free Whiteboard Digitization at the Edge》(IEEE TMC) 的<b>对比实验</b>与<b>消融实验</b>两类实验，一次性映射到 PaddleSeg 的配置、模型、骨干、数据集与运行产物上；再据此把当前 5.6 万个文件、约 8 GB 的仓库收敛为一条「最小可复现」实验线。本稿只出方案、不动代码。<b>已核实「Ours」= <code>repvit_v8_7</code>（<code>MobileSegV3</code> + <code>RepViTBackboneV8</code>），而该配置当前已不在工作区</b>——见 §2.2。</p>
           <div class="meta-row" aria-label="文档元数据">
-            <span>版本 1.5（已执行）</span>
+            <span>版本 1.6（已执行）</span>
             <span>生成日期：2026-10-12</span>
             <span>依据：TMC-DigiBoard（13 页）</span>
             <span>佐证：<code>Desktop\结果.md</code>（实验日志）</span>
@@ -1012,6 +1013,73 @@ docker run --gpus all -it --rm --shm-size=8g \
         </div>
         <p class="note"><b>仓库瘦身提示</b>：推送时 GitHub 警告两个上游文档动图过大——<code>docs/images/cityscapes.gif</code>（91.9 MB）与 <code>docs/images/eiseg_demo.gif</code>（53.1 MB）。两者都是 PaddleSeg 上游的文档素材，与本实验无关；删掉它们可以让仓库小一大截（需注意历史里仍留有旧对象）。</p>
       </section>
+      <!-- ==================== 9 todo ==================== -->
+      <section class="doc-section" id="todo">
+        <div class="section-heading">
+          <h2>9 TODO（按可执行优先级）</h2>
+          <p>对照专家意见逐条拆解，并按「现在能不能做」排序。<b>前缀 ★ 表示不依赖那批暂时拿不到的权重</b>——先把这些做完，等权重到手再补最后一块。</p>
+        </div>
+        <div class="callout danger">
+          <div>
+            <span class="callout-label">当前约束</span>
+            <h3>缺失权重在另一台服务器上，网络原因暂时取不到</h3>
+          </div>
+          <p>受影响的是 TABLE III / TABLE VI 中<b>没有本地 checkpoint</b> 的行：TABLE III 的 DeepLabV3p、PP-LiteSeg、Ours（<code>repvit_v8_7</code>）；TABLE VI 的 <code>+GAM+ASPP</code>、<code>+GAM+PPM(1236)+FM</code>、<code>+GAM+PPM(124)+ASPP+FM</code>、末行 <code>+GAM+PPM(124)+ASPP+MSF</code>。这些行目前<b>无法求值</b>（权重不在 <code>output/</code>），但它们的配置都已就位，权重一到就能直接跑。<code>repvit_v8_1</code> 另有一处独立问题：它引用 <code>pretrained/repvitv1/best_model.pdparams</code>，该目录不在仓库里。</p>
+        </div>
+        <h3 class="sub-heading">9.1 P0 —— 现在就能做</h3>
+        <div class="table-wrap compact">
+          <table>
+            <thead><tr><th>#</th><th>任务</th><th>对应专家意见</th><th>产出物</th></tr></thead>
+            <tbody>
+              <tr><td>★1</td><td><b>叙事重构</b>：intro / contributions 改成「移动端系统」为主线，分割退为组件；全文删掉 <i>semantic reconstruction</i> 一类措辞，改为 <i>temporal background retrieval</i> / <i>history-based content recovery</i>，并在 intro 明写前提「只能恢复此前被看见过的内容」</td><td>① ⑥</td><td>改写后的 intro / contributions / 方法叙述</td></tr>
+              <tr><td>★2</td><td><b>恢复输出的离线批处理通道</b>：给 iOS 管线加一个 offline 模式（吃一段视频 → 吐恢复后的视频 + 逐帧产物）。没有它，端到端 baseline 与恢复质量指标都没有输入</td><td>③</td><td><code>restored.mp4</code>（可直接喂 §7.3 的脚本）</td></tr>
+              <tr><td>★3</td><td><b>合成遮挡数据生成器</b>：干净白板视频 + presenter 掩膜 → 可控输入视频（脚本化遮挡时长 / 模式 / 书写中遮挡 / 擦除中遮挡），随附逐帧 GT 与逐帧遮挡掩膜</td><td>②</td><td>一套可复现的定量测试集</td></tr>
+              <tr><td>★4</td><td><b>恢复质量评测跑通</b>：用 2 + 3 的产物跑 <code>eval_restoration_video.py</code>，出 PSNR / SSIM / 时序一致性的「全帧 + 仅遮挡区」双口径表</td><td>③</td><td>恢复质量结果表</td></tr>
+              <tr><td>★5</td><td><b>端到端 baseline 对比</b>：raw 原始流 / 单帧 inpainting（LaMa、MAT，配同款掩膜）/ naive buffer（去掉时序门控）/ 完整系统，在同一批合成数据上跑</td><td>③</td><td>隔离出 temporal buffer 贡献的对比表</td></tr>
+              <tr><td>★6</td><td><b>主动书写四场景量化</b>：恢复延迟（帧）、鬼影持续时长、时效半衰期、手部细结构误差——并把「内容时效性假设」写成方法边界</td><td>②</td><td>四场景指标表 + 局限声明</td></tr>
+              <tr><td>★7</td><td><b>部署指标做成一键可复现</b>：把 <code>DeviceStats</code> 落成每次运行一个 CSV（时间戳 / fps / 内存 / 热 / 电量 / CPU），便于出多设备长跑表</td><td>⑤</td><td>每次运行一份资源日志</td></tr>
+              <tr><td>★8</td><td><b>真实录制方案与用户研究材料</b>：写清录制脚本（固定机位、先录干净参考、每场景 ≥5 段 × 30–60 s）与三条件用户研究（客观抄写/问答 + Likert/SUS/NASA-TLX、拉丁方平衡、RM-ANOVA/Friedman）</td><td>② ④</td><td>录制脚本 + 研究方案与量表</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3 class="sub-heading">9.2 P1 —— 需要你的时间 / 设备 / 被试</h3>
+        <div class="table-wrap compact">
+          <table>
+            <thead><tr><th>#</th><th>任务</th><th>对应专家意见</th><th>依赖</th></tr></thead>
+            <tbody>
+              <tr><td>★9</td><td>按 9.1-8 的脚本<b>实际录制</b>真实场景视频（含主动书写四场景）</td><td>②</td><td>白板 / 机位 / 时间</td></tr>
+              <tr><td>★10</td><td><b>用户研究执行</b>：N ≥ 20，被试内三条件（original / restored / dual-view），实测正确率与用时，再做主观量表</td><td>④</td><td>被试</td></tr>
+              <tr><td>★11</td><td><b>多设备跑分</b>：≥3 档机型 × 30–60 min 长跑，出 FPS 漂移、内存、温度曲线、耗电（mAh/10min）</td><td>⑤</td><td>设备</td></tr>
+              <tr><td>★12</td><td>热降频分析：把温度曲线与 FPS 对齐，说明 31 ms 预算在高负载下的守备情况</td><td>⑤</td><td>10 的数据</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3 class="sub-heading">9.3 P2 —— 被权重卡住（拿到即可执行）</h3>
+        <div class="table-wrap compact">
+          <table>
+            <thead><tr><th>#</th><th>任务</th><th>对应专家意见</th><th>说明</th></tr></thead>
+            <tbody>
+              <tr><td>13</td><td>补齐 TABLE III 缺的三行（DeepLabV3p / PP-LiteSeg / Ours）与 TABLE VI 缺的四行的 mIoU / PSNR / SSIM / 时序一致性</td><td>③</td><td>配置已就位，权重到位后一条 <code>tools/val.py</code> 即可</td></tr>
+              <tr><td>14</td><td>Ours（<code>repvit_v8_7</code>）权重核验：确认它确实等于论文 TABLE III / TABLE VI 末行的那次训练</td><td>③</td><td>同时解决 §2.6 里 <code>MobileSegV2</code> vs <code>MobileSegV3</code> 的口径分歧</td></tr>
+              <tr><td>15</td><td>若权重始终取不回：改为重训那些行（<code>data/portrait14k</code> 在本地，可直接跑）</td><td>③</td><td>会得到不同数值，论文里需注明；建议只作补充</td></tr>
+              <tr><td>16</td><td>论文表格口径最终对齐：哪一栏用<b>掩膜</b>口径、哪一栏用<b>恢复</b>口径，避免同一张表混用两个 SSIM</td><td>③</td><td>§7.1 与 §7.3 已把两套口径分清</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3 class="sub-heading">9.4 已就绪（对照专家意见的存量）</h3>
+        <div class="table-wrap compact">
+          <table>
+            <thead><tr><th>已完成</th><th>服务于</th></tr></thead>
+            <tbody>
+              <tr><td>PaddleSeg 验证阶段新增 PSNR / SSIM / 时序一致性（<code>--calc_restoration</code>），20 个运行已实测回填</td><td>③</td></tr>
+              <tr><td>iOS 侧恢复质量指标 <code>RestorationMetrics.swift</code>（对干净参考帧）+ 纹理回读桥 <code>FrameCapture.makeImage</code></td><td>③</td></tr>
+              <tr><td>视频侧评测脚本 <code>eval_restoration_video.py</code>（全帧 / 仅遮挡区双口径、时序稳定性、CSV 明细）</td><td>③</td></tr>
+              <tr><td>iOS 资源采样 <code>DeviceStats.swift</code>（内存 / 热 / 电量 / CPU）与状态条展示</td><td>⑤</td></tr>
+              <tr><td>Docker 训练镜像 + GitHub public 仓库（<code>Me106y/PaddleSeg</code>）</td><td>工程可复现</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
       <section class="doc-section" id="changelog">
         <div class="section-heading">
           <h2>变更记录</h2>
@@ -1035,11 +1103,12 @@ docker run --gpus all -it --rm --shm-size=8g \
               <tr><td>1.3</td><td>2026-10-12</td><td><b>注册解封 + iOS 恢复质量指标。</b>① 把 <code>MobileSegV4 / V5 / V11</code> 注册进 <code>models/__init__.py</code>，<code>repvit_v8_18</code> 得以求值（mIoU 0.8909 复现论文 89.09，PSNR 22.38 / SSIM 0.9329）——已补进 §1.2 与 §7.1（明细表增至 20 个运行），可解析配置 42/50 → <b>45/50</b>。② iOS 新增 <code>RestorationMetrics.swift</code>（对干净参考帧算恢复质量 PSNR/SSIM），并从 <code>FrameCapture</code> 抽出 <code>makeImage(from:)</code> 作为纹理→CGImage 的桥。</td></tr>
               <tr><td>1.4</td><td>2026-10-12</td><td><b>视频侧恢复质量评估。</b>新增 <code>dashboard-ios/scripts/eval_restoration_video.py</code>：给定「无遮挡参考图 + 处理后的视频（可选原始视频/掩膜）」逐帧输出 PSNR / SSIM / MAE 的全帧与<b>仅遮挡区</b>两个口径、帧间 MAD 与闪烁指标，落盘 CSV。已用合成数据自测通过。§7.3 记录用法、输出与两个口径前提。</td></tr>
               <tr><td>1.5</td><td>2026-10-12</td><td><b>部署与托管。</b>新增 <code>Dockerfile</code> / <code>.dockerignore</code>（GPU 训练镜像，固定 <code>PYTHONPATH</code> 并带 import 自检）；<code>.gitignore</code> 排除数据集、产物与权重，把仓库收敛为纯代码（暂存 13.3 MB）。提交 <code>006735d2</code> 并推送到新建的 public 仓库 <code>Me106y/PaddleSeg</code>（<code>main</code>）。新增 §8。</td></tr>
+              <tr><td>1.6</td><td>2026-10-12</td><td><b>TODO 清单。</b>按「现在能不能做」把专家六条意见拆成 P0 / P1 / P2：P0 八项不依赖那批暂时取不到的权重（叙事重构、离线批处理通道、合成遮挡生成器、恢复质量与端到端 baseline、主动书写量化、部署日志、录制与用户研究方案），P1 四项需时间/设备/被试，P2 四项被缺失权重卡住。新增 §9。</td></tr>
             </tbody>
           </table>
         </div>
         <div class="document-control">
-          <span>PaddleSeg 实验代码精简方案 · v1.5（已执行）· 2026-10-12</span>
+          <span>PaddleSeg 实验代码精简方案 · v1.6（已执行）· 2026-10-12</span>
           <span>依据论文：DigiBoard (IEEE TMC) · 目标仓库：<code>Desktop\PaddleSeg</code></span>
         </div>
       </section>
