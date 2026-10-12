@@ -300,6 +300,7 @@
         <a href="#executed">6 执行记录</a>
         <a href="#eval-ext">7 评测扩展</a>
         <a href="#video-eval">7.3 恢复质量评估</a>
+        <a href="#deploy">8 部署与仓库</a>
         <a href="#changelog">变更记录</a>
       </nav>
       <div class="sidebar-note">
@@ -314,7 +315,7 @@
           <h1>PaddleSeg 实验代码精简方案</h1>
           <p class="hero-lead">把论文《DigiBoard: Occlusion-Free Whiteboard Digitization at the Edge》(IEEE TMC) 的<b>对比实验</b>与<b>消融实验</b>两类实验，一次性映射到 PaddleSeg 的配置、模型、骨干、数据集与运行产物上；再据此把当前 5.6 万个文件、约 8 GB 的仓库收敛为一条「最小可复现」实验线。本稿只出方案、不动代码。<b>已核实「Ours」= <code>repvit_v8_7</code>（<code>MobileSegV3</code> + <code>RepViTBackboneV8</code>），而该配置当前已不在工作区</b>——见 §2.2。</p>
           <div class="meta-row" aria-label="文档元数据">
-            <span>版本 1.4（已执行）</span>
+            <span>版本 1.5（已执行）</span>
             <span>生成日期：2026-10-12</span>
             <span>依据：TMC-DigiBoard（13 页）</span>
             <span>佐证：<code>Desktop\结果.md</code>（实验日志）</span>
@@ -970,6 +971,47 @@ python eval_restoration_video.py --reference ref.png --restored restored.mp4 --i
         </div>
         <p class="note">口径与 iOS 侧 <code>RestorationMetrics.swift</code> 完全一致（亮度通道、11×11 高斯窗 σ=1.5、C1/C2 标准常数、data_range=255），三处（PaddleSeg / iOS / 视频脚本）的 SSIM 可以直接放在同一张表里。已用合成数据自测：参考图 + 60 帧恢复视频 + 带遮挡的原始视频，注入「恢复残留」窗口后 PSNR 全帧由 42.9 掉到 37.4、窗口结束回到 43.0，遮挡区占比 13.6% —— 定位与量级都符合预期。</p>
       </section>
+      <!-- ==================== 8 deploy ==================== -->
+      <section class="doc-section" id="deploy">
+        <div class="section-heading">
+          <h2>8 部署与仓库</h2>
+          <p>训练环境打进镜像一次成型；代码托管在 GitHub。</p>
+        </div>
+        <h3 class="sub-heading">8.1 Docker 训练镜像</h3>
+        <p class="note">仓库根目录新增 <code>Dockerfile</code> 与 <code>.dockerignore</code>。服务器上只要装了 NVIDIA 驱动 + nvidia-container-toolkit，一条命令就能构建出带全部依赖与本仓库代码的镜像。</p>
+        <pre><code># 构建
+docker build -t paddleseg-train:latest .
+
+# 训练（data / output / log 挂载进去，不进镜像）
+docker run --gpus all -it --rm --shm-size=8g \
+  -v "$PWD/data:/workspace/data" \
+  -v "$PWD/output:/workspace/output" \
+  -v "$PWD/log:/workspace/log" \
+  paddleseg-train:latest \
+  python tools/train.py --config configs/quick_start/repvit_v8_20.yml \
+    --save_dir output/repvit_v8_20 --do_eval --use_vdl --save_interval 500</code></pre>
+        <div class="callout warning">
+          <div>
+            <span class="callout-label">关键点</span>
+            <h3>镜像里必须固定 <code>PYTHONPATH=/workspace</code></h3>
+          </div>
+          <p>本仓库 <code>tools/*.py</code> 依赖「仓库根在 <code>sys.path</code> 上」。若不固定，<code>python tools/val.py</code> 会把 <code>tools/</code> 当作 <code>sys.path[0]</code>，从而 import 到 <code>site-packages</code> 里的上游 <code>paddleseg</code>，报 <code>XXX was not found</code>。Dockerfile 里用 <code>ENV PYTHONPATH=/workspace</code> 解决，并在构建阶段加了一条断言：import 到非 <code>/workspace</code> 的 paddleseg 就让 build 失败。</p>
+        </div>
+        <p class="note"><b>未验证项</b>：本机没有 docker CLI，<code>Dockerfile</code> 未经实际 build；基础镜像标签 <code>paddlepaddle/paddle:3.0.0-gpu-cuda12.6-cudnn9.5</code> 是按本地 paddle 3.0.0 推断的，未联网核对。若拉不到，按文件注释里的命名规则换标签并用 <code>--build-arg BASE_IMAGE=...</code> 覆盖。另：<code>--shm-size</code> 别省，PyTorch/Paddle 的 DataLoader 共享内存不足会直接崩。</p>
+        <h3 class="sub-heading">8.2 GitHub 仓库</h3>
+        <div class="table-wrap compact">
+          <table>
+            <thead><tr><th>项</th><th>值</th></tr></thead>
+            <tbody>
+              <tr><td>仓库</td><td><code>https://github.com/Me106y/PaddleSeg</code>（public）</td></tr>
+              <tr><td>默认分支 / 首个提交</td><td><code>main</code> / <code>006735d2</code>「新增 Docker 训练镜像，并整理仓库到可发布状态」</td></tr>
+              <tr><td>本地对应分支</td><td><code>codex/docker-training-env</code>（跟踪 <code>github/main</code>）</td></tr>
+              <tr><td>推送内容</td><td>1958 个文件变更（含裁剪掉的 1853 个上游文件）；不含数据集、权重与日志</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note"><b>仓库瘦身提示</b>：推送时 GitHub 警告两个上游文档动图过大——<code>docs/images/cityscapes.gif</code>（91.9 MB）与 <code>docs/images/eiseg_demo.gif</code>（53.1 MB）。两者都是 PaddleSeg 上游的文档素材，与本实验无关；删掉它们可以让仓库小一大截（需注意历史里仍留有旧对象）。</p>
+      </section>
       <section class="doc-section" id="changelog">
         <div class="section-heading">
           <h2>变更记录</h2>
@@ -992,11 +1034,12 @@ python eval_restoration_video.py --reference ref.png --restored restored.mp4 --i
               <tr><td>1.2</td><td>2026-10-12</td><td><b>PSNR / SSIM 回填表格。</b>对 <code>output/</code> 下全部可用权重跑了一遍带新指标的验证（19 个运行；<code>repvit_v8_1</code> 因缺 <code>pretrained/</code> 未能求值）。§1.1 TABLE III 与 §1.2 TABLE VI 新增 PSNR / SSIM 两列（无权重行标「—」），§7.1 追加「全部可实测运行」19 行明细表。所有 mIoU 与 <code>结果.md</code> 记录逐位一致。</td></tr>
               <tr><td>1.3</td><td>2026-10-12</td><td><b>注册解封 + iOS 恢复质量指标。</b>① 把 <code>MobileSegV4 / V5 / V11</code> 注册进 <code>models/__init__.py</code>，<code>repvit_v8_18</code> 得以求值（mIoU 0.8909 复现论文 89.09，PSNR 22.38 / SSIM 0.9329）——已补进 §1.2 与 §7.1（明细表增至 20 个运行），可解析配置 42/50 → <b>45/50</b>。② iOS 新增 <code>RestorationMetrics.swift</code>（对干净参考帧算恢复质量 PSNR/SSIM），并从 <code>FrameCapture</code> 抽出 <code>makeImage(from:)</code> 作为纹理→CGImage 的桥。</td></tr>
               <tr><td>1.4</td><td>2026-10-12</td><td><b>视频侧恢复质量评估。</b>新增 <code>dashboard-ios/scripts/eval_restoration_video.py</code>：给定「无遮挡参考图 + 处理后的视频（可选原始视频/掩膜）」逐帧输出 PSNR / SSIM / MAE 的全帧与<b>仅遮挡区</b>两个口径、帧间 MAD 与闪烁指标，落盘 CSV。已用合成数据自测通过。§7.3 记录用法、输出与两个口径前提。</td></tr>
+              <tr><td>1.5</td><td>2026-10-12</td><td><b>部署与托管。</b>新增 <code>Dockerfile</code> / <code>.dockerignore</code>（GPU 训练镜像，固定 <code>PYTHONPATH</code> 并带 import 自检）；<code>.gitignore</code> 排除数据集、产物与权重，把仓库收敛为纯代码（暂存 13.3 MB）。提交 <code>006735d2</code> 并推送到新建的 public 仓库 <code>Me106y/PaddleSeg</code>（<code>main</code>）。新增 §8。</td></tr>
             </tbody>
           </table>
         </div>
         <div class="document-control">
-          <span>PaddleSeg 实验代码精简方案 · v1.4（已执行）· 2026-10-12</span>
+          <span>PaddleSeg 实验代码精简方案 · v1.5（已执行）· 2026-10-12</span>
           <span>依据论文：DigiBoard (IEEE TMC) · 目标仓库：<code>Desktop\PaddleSeg</code></span>
         </div>
       </section>
