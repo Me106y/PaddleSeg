@@ -54,6 +54,7 @@ class MobileNetV2(nn.Layer):
         prefix_name = ""
 
         bottleneck_params_list = [
+            # t,c,n,s
             (1, 16, 1, 1),
             (6, 24, 2, 2),  # x4
             (6, 32, 3, 2),  # x8
@@ -64,13 +65,14 @@ class MobileNetV2(nn.Layer):
         ]
         self.out_index = [1, 2, 4, 6]
 
+        # stem
         self.conv1 = ConvBNLayer(
-            num_channels=in_channels,
-            num_filters=int(32 * scale),
-            filter_size=3,
-            stride=2,
-            padding=1,
-            name=prefix_name + "conv1_1")
+            num_channels=in_channels,  # 输入通道数（RGB 图像→3）
+            num_filters=int(32 * scale),  # 输出通道数（卷积核个数），再乘上宽度因子 scale（如 1.0→32）
+            filter_size=3,  # 卷积核空间尺寸 3×3
+            stride=2,  # 步长=2 → 特征图高、宽各减半（下采样）
+            padding=1,  # 四周各补 1 像素零填充，使输出尺寸 = ⌊H/2⌋，⌊W/2⌋
+            name=prefix_name + "conv1_1")  # 参数命名前缀，方便加载权重/调试
 
         self.block_list = []
         i = 1
@@ -113,7 +115,7 @@ class MobileNetV2(nn.Layer):
             utils.load_entire_model(self, self.pretrained)
 
 
-class ConvBNLayer(nn.Layer):
+class ConvBNLayer(nn.Layer): # 定义普通卷积、BN结构 输出：[N,C,H,W]
     def __init__(self,
                  num_channels,
                  filter_size,
@@ -151,11 +153,12 @@ class ConvBNLayer(nn.Layer):
         return y
 
 
-class InvertedResidualUnit(nn.Layer):
+class InvertedResidualUnit(nn.Layer): # 定义mobile网络基本结构--即逆残差结构
     def __init__(self, num_channels, num_in_filter, num_filters, stride,
                  filter_size, padding, expansion_factor, name):
         super(InvertedResidualUnit, self).__init__()
         num_expfilter = int(round(num_in_filter * expansion_factor))
+        # 1×1 卷积升维
         self._expand_conv = ConvBNLayer(
             num_channels=num_channels,
             num_filters=num_expfilter,
@@ -164,7 +167,7 @@ class InvertedResidualUnit(nn.Layer):
             padding=0,
             num_groups=1,
             name=name + "_expand")
-
+        # 3×3 depthwise 卷积
         self._bottleneck_conv = ConvBNLayer(
             num_channels=num_expfilter,
             num_filters=num_expfilter,
@@ -174,7 +177,7 @@ class InvertedResidualUnit(nn.Layer):
             num_groups=num_expfilter,
             use_cudnn=False,
             name=name + "_dwise")
-
+        # 1×1 卷积（线性瓶颈）
         self._linear_conv = ConvBNLayer(
             num_channels=num_expfilter,
             num_filters=num_filters,
@@ -197,6 +200,7 @@ class InvresiBlocks(nn.Layer):
     def __init__(self, in_c, t, c, n, s, name):
         super(InvresiBlocks, self).__init__()
 
+        # 第 1 个块负责空间下采样（stride=s，无残差连接）
         self._first_block = InvertedResidualUnit(
             num_channels=in_c,
             num_in_filter=in_c,
@@ -207,6 +211,7 @@ class InvresiBlocks(nn.Layer):
             expansion_factor=t,
             name=name + "_1")
 
+        # 剩下 n-1 个块保持空间尺寸不变（stride=1，带残差连接）
         self._block_list = []
         for i in range(1, n):
             block = self.add_sublayer(

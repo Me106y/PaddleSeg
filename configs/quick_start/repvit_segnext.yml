@@ -1,0 +1,68 @@
+batch_size: 8  #4 GPU
+iters: 60000
+save_interval: 1000
+
+train_dataset:
+  type: Dataset
+  mode: train
+  dataset_root: data/portrait14k
+  train_path: data/portrait14k/train.txt
+  num_classes: 2
+  transforms:
+    - type: Resize
+      target_size: [256, 144]
+    - type: ResizeStepScaling
+      scale_step_size: 0
+    - type: RandomRotation
+    - type: RandomPaddingCrop
+      crop_size: [256, 144]
+    - type: RandomHorizontalFlip
+    - type: RandomDistort
+    - type: RandomBlur
+      prob: 0.3
+    - type: Normalize
+
+val_dataset:
+  type: Dataset
+  mode: val
+  dataset_root: data/portrait14k/
+  val_path: data/portrait14k/val.txt
+  num_classes: 2
+  transforms:
+    - type: Resize
+      target_size: [256, 144]
+    - type: Normalize
+
+export:
+  transforms:
+    - type: Resize
+      target_size: [256, 144]
+    - type: Normalize
+
+optimizer:
+  type: AdamW
+  weight_decay: 0.01
+
+lr_scheduler:
+  type: PolynomialDecay
+  learning_rate: 0.001
+  end_lr: 0
+  power: 0.9
+
+loss:
+  types:
+    - type: CrossEntropyLoss
+  coef: [1]
+
+model:
+  type: SegNeXt
+  backbone:
+    type: RepViTBackboneV8
+  num_classes: 2
+  decoder_cfg:
+    channels: 256
+    ham_channels: 256
+    ham_kwargs:
+      MD_R: 16
+    dropout_rate: 0.1
+    align_corners: False

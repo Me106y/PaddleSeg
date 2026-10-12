@@ -87,6 +87,7 @@ def train(model,
           logger=setup_logger(__file__),
           print_mem_info=False,
           shuffle=True,
+          calc_restoration=True,
           **kwargs):
     """
     Launch training.
@@ -344,6 +345,7 @@ def train(model,
                                                   num_workers=num_workers,
                                                   precision=precision,
                                                   amp_level=amp_level,
+                                                  calc_restoration=calc_restoration,
                                                   **test_config)
 
                 if use_ema:
@@ -353,6 +355,7 @@ def train(model,
                         num_workers=num_workers,
                         precision=precision,
                         amp_level=amp_level,
+                    calc_restoration=calc_restoration,
                         **test_config)
 
                 model.train()

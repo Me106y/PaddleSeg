@@ -1,6 +1,6 @@
 train_dataset:
   type: PPHumanSeg14K
-  dataset_root: data/PP-HumanSeg14K
+  dataset_root: data/portrait14k
   transforms:
     - type: ResizeStepScaling
       min_scale_factor: 0.5
@@ -18,7 +18,7 @@ train_dataset:
 
 val_dataset:
   type: PPHumanSeg14K
-  dataset_root: data/PP-HumanSeg14K
+  dataset_root: data/portrait14k
   transforms:
     - type: Normalize
   mode: val

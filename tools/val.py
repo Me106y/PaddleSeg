@@ -20,6 +20,17 @@ import paddle
 from paddleseg.cvlibs import manager, Config, SegBuilder
 from paddleseg.core import evaluate
 from paddleseg.utils import get_sys_env, logger, utils
+import time  # 新增时间模块
+
+
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if str(v).lower() in ('yes', 'true', 't', '1'):
+        return True
+    if str(v).lower() in ('no', 'false', 'f', '0'):
+        return False
+    raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
 def parse_args():
@@ -103,6 +114,13 @@ def parse_args():
         action='store_true',
         default=False,
         help='Whether to enable multilabel mode. Default: False.')
+    parser.add_argument(
+        '--calc_restoration',
+        type=str2bool,
+        default=True,
+        help='Whether to additionally report PSNR / SSIM of the binarised '
+        'foreground mask and the temporal consistency across consecutive '
+        'samples, alongside mIoU / Acc / Kappa / Dice. Default: True.')
 
     return parser.parse_args()
 
@@ -123,6 +141,7 @@ def merge_test_config(cfg, args):
     return test_config
 
 
+# 在main函数中添加时间统计
 def main(args):
     assert args.config is not None, \
         'No configuration file specified, please set --config'
@@ -152,7 +171,21 @@ def main(args):
         logger.info('Loaded trained weights successfully.')
     val_dataset = builder.val_dataset
 
-    evaluate(model, val_dataset, num_workers=args.num_workers, **test_config)
+    # 在验证开始前添加计时器
+    start_time = time.time()
+    evaluate(
+        model,
+        val_dataset,
+        num_workers=args.num_workers,
+        calc_restoration=args.calc_restoration,
+        **test_config)
+    total_time = time.time() - start_time
+    
+    # 计算并打印平均推理时间
+    total_samples = len(val_dataset)
+    avg_time = total_time / total_samples if total_samples > 0 else 0
+    logger.info(f"Average inference time: {avg_time:.4f} seconds/sample")
+    logger.info(f"Total samples evaluated: {total_samples}")
 
 
 if __name__ == '__main__':

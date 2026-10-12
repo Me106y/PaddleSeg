@@ -117,3 +117,24 @@ test_tipc/web/models/
 
 # EISeg
 EISeg/eiseg/config/setting.txt
+
+# ---------------------------------------------------------------------------
+# 本项目实验相关：数据集与训练产物一律不进 git（服务器 / Docker 用挂载）
+# ---------------------------------------------------------------------------
+
+# 数据集（1.8 GB+）
+data/portrait14k/
+data/portrait16k/
+
+# 训练产物与日志
+output/
+log/
+pretrained/
+
+# 权重与导出产物（体积大，且可重训 / 重新导出）
+*.pdparams
+*.pdopt
+*.pdstates
+*.pdiparams
+*.pdiparams.info
+*.pdmodel

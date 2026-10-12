@@ -1,4 +1,0 @@
-paddleseg
-scikit-learn
-pycocotools
-tabulate

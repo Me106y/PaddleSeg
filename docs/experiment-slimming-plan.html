@@ -1,0 +1,1026 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PaddleSeg 实验代码精简方案 — DigiBoard 对比实验与消融实验</title>
+  <style>
+    :root {
+      --bg: #f3f6fc;
+      --surface: #ffffff;
+      --ink: #182647;
+      --muted: #5c6f94;
+      --line: #dfe7f4;
+      --brand: #2348b2;
+      --brand-ink: #17306f;
+      --brand-soft: #e9f0fd;
+      --brand-line: #c7d7f4;
+      --warn-bg: #fdf6e7;
+      --warn-line: #f0dca6;
+      --warn-ink: #7d5300;
+      --danger-bg: #fdeeee;
+      --danger-line: #f2c4c4;
+      --danger-ink: #9c2f2f;
+      --ok-bg: #eef7f0;
+      --ok-line: #bfe0c8;
+      --ok-ink: #1f6b3a;
+      --radius: 14px;
+      --shadow: 0 1px 2px rgba(23, 48, 111, .05), 0 8px 24px rgba(23, 48, 111, .07);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", system-ui, -apple-system, sans-serif;
+      font-size: 15px;
+      line-height: 1.75;
+    }
+    a { color: var(--brand-ink); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code {
+      font-family: Consolas, "JetBrains Mono", Menlo, monospace;
+      font-size: .86em;
+      background: var(--brand-soft);
+      border: 1px solid var(--brand-line);
+      border-radius: 6px;
+      padding: 1px 6px;
+      white-space: nowrap;
+    }
+    pre {
+      background: #17224d;
+      color: #dde7fb;
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      overflow-x: auto;
+      font-size: 12.5px;
+      line-height: 1.6;
+      margin: 0;
+    }
+    pre code { background: none; border: none; color: inherit; padding: 0; white-space: pre; }
+    .skip-link { position: absolute; left: -9999px; }
+    .skip-link:focus { left: 16px; top: 12px; background: var(--surface); padding: 8px 14px; border-radius: 8px; z-index: 99; }
+    /* ---------- topbar ---------- */
+    .topbar {
+      position: sticky; top: 0; z-index: 50;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 32px;
+      background: rgba(255, 255, 255, .93);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--line);
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand:hover { text-decoration: none; }
+    .brand-mark {
+      width: 42px; height: 42px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, var(--brand) 0%, var(--brand-ink) 100%);
+      color: #fff; font-weight: 800; font-size: 12px; letter-spacing: .5px;
+      box-shadow: var(--shadow);
+    }
+    .brand strong { display: block; font-size: 15.5px; color: var(--ink); }
+    .brand small { display: block; font-size: 12px; color: var(--muted); }
+    .primary-button {
+      border: none; cursor: pointer;
+      background: var(--brand); color: #fff;
+      font-size: 13.5px; font-weight: 600;
+      padding: 9px 18px; border-radius: 10px;
+      box-shadow: var(--shadow);
+      transition: background .15s ease;
+    }
+    .primary-button:hover { background: var(--brand-ink); }
+    /* ---------- shell ---------- */
+    .page-shell {
+      display: flex; gap: 40px; align-items: flex-start;
+      max-width: 1280px; margin: 0 auto;
+      padding: 30px 32px 90px;
+    }
+    .sidebar { width: 254px; flex-shrink: 0; position: sticky; top: 84px; }
+    #toc { display: flex; flex-direction: column; gap: 2px; }
+    #toc a {
+      padding: 7px 12px; border-radius: 9px;
+      font-size: 13.5px; color: var(--muted);
+      border-left: 3px solid transparent;
+    }
+    #toc a:hover { background: #edf2fa; text-decoration: none; color: var(--ink); }
+    #toc a.active {
+      background: var(--brand-soft); color: var(--brand-ink);
+      border-left-color: var(--brand); font-weight: 600;
+    }
+    .sidebar-note {
+      margin-top: 22px; padding: 16px;
+      background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .sidebar-note strong { font-size: 13px; color: var(--brand-ink); }
+    .sidebar-note p { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
+    main { flex: 1; min-width: 0; }
+    .doc-section { margin-bottom: 60px; scroll-margin-top: 84px; }
+    .section-heading { margin-bottom: 20px; }
+    .section-heading h2 { margin: 0 0 6px; font-size: 24px; letter-spacing: -.3px; }
+    .section-heading p { margin: 0; color: var(--muted); font-size: 14px; }
+    .sub-heading { margin: 34px 0 14px; font-size: 17px; }
+    .note { font-size: 13px; color: var(--muted); margin: 10px 0 18px; }
+    /* ---------- hero ---------- */
+    .hero {
+      display: flex; gap: 28px; justify-content: space-between; align-items: stretch;
+      background: linear-gradient(135deg, #ffffff 0%, #eef4fe 55%, #d9e6fc 100%);
+      border: 1px solid var(--brand-line);
+      border-radius: 20px; padding: 38px 40px; margin-bottom: 40px;
+      box-shadow: var(--shadow);
+    }
+    .hero-copy { flex: 1; min-width: 0; }
+    .eyebrow {
+      margin: 0 0 10px; font-size: 12.5px; font-weight: 700;
+      letter-spacing: 2px; text-transform: uppercase; color: var(--brand);
+    }
+    .hero h1 { margin: 0 0 12px; font-size: 31px; letter-spacing: -.5px; }
+    .hero-lead { margin: 0; font-size: 15.5px; color: var(--muted); max-width: 620px; }
+    .meta-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+    .meta-row span {
+      font-size: 12.5px; color: var(--brand-ink);
+      background: #fff; border: 1px solid var(--brand-line);
+      padding: 4px 12px; border-radius: 999px;
+    }
+    .hero-summary { display: flex; flex-direction: column; gap: 12px; justify-content: center; }
+    .hero-summary div {
+      background: #fff; border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 12px 20px; min-width: 158px; text-align: center; box-shadow: var(--shadow);
+    }
+    .hero-summary strong { display: block; font-size: 23px; color: var(--brand); }
+    .hero-summary span { font-size: 12px; color: var(--muted); }
+    /* ---------- callout ---------- */
+    .callout {
+      display: flex; gap: 18px;
+      background: var(--surface); border: 1px solid var(--line);
+      border-left: 4px solid var(--brand);
+      border-radius: var(--radius); padding: 20px 24px; margin-bottom: 26px;
+      box-shadow: var(--shadow);
+    }
+    .callout.warning { border-left-color: #d99a1b; background: var(--warn-bg); border-color: var(--warn-line); }
+    .callout.warning .callout-label, .callout.warning h3 { color: var(--warn-ink); }
+    .callout.danger { border-left-color: #c94f4f; background: var(--danger-bg); border-color: var(--danger-line); }
+    .callout.danger .callout-label, .callout.danger h3 { color: var(--danger-ink); }
+    .callout.ok { border-left-color: #4a9d68; background: var(--ok-bg); border-color: var(--ok-line); }
+    .callout.ok .callout-label, .callout.ok h3 { color: var(--ok-ink); }
+    .callout-label {
+      display: block; font-size: 12px; font-weight: 700;
+      letter-spacing: 1.5px; text-transform: uppercase; color: var(--brand);
+      margin-bottom: 4px;
+    }
+    .callout h2 { margin: 0 0 8px; font-size: 19px; }
+    .callout h3 { margin: 0 0 8px; font-size: 16px; }
+    .callout p { margin: 0; font-size: 14px; color: var(--ink); }
+    .callout p + p { margin-top: 8px; }
+    /* ---------- decision grid ---------- */
+    .decision-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(258px, 1fr)); gap: 14px; }
+    .decision-grid article {
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow);
+    }
+    .decision-grid .decision-index {
+      display: inline-block; font-size: 11.5px; font-weight: 700;
+      letter-spacing: 1px; color: var(--brand);
+      background: var(--brand-soft); border-radius: 6px; padding: 2px 10px; margin-bottom: 10px;
+    }
+    .decision-grid h3 { margin: 0 0 6px; font-size: 15px; }
+    .decision-grid p { margin: 0; font-size: 13px; color: var(--muted); }
+    .decision-grid .rec { display: block; margin-top: 10px; font-size: 12.5px; color: var(--brand-ink); }
+    /* ---------- tables ---------- */
+    .table-wrap {
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: var(--radius); overflow: auto; box-shadow: var(--shadow);
+      margin-bottom: 8px;
+    }
+    .table-wrap.compact table td, .table-wrap.compact table th { padding: 8px 13px; font-size: 12.8px; }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      text-align: left; font-size: 12.5px; letter-spacing: .3px;
+      color: var(--muted); background: #f1f5fc;
+      padding: 10px 14px; border-bottom: 1px solid var(--line);
+      white-space: nowrap;
+    }
+    td { padding: 11px 14px; border-bottom: 1px solid var(--line); font-size: 13.5px; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    td code, th code { white-space: nowrap; }
+    .tbl-cap { font-size: 12.5px; color: var(--muted); margin: 8px 0 20px; }
+    /* ---------- badges ---------- */
+    .tag {
+      display: inline-block; font-size: 11.5px; font-weight: 700;
+      border-radius: 6px; padding: 1px 8px; white-space: nowrap;
+      border: 1px solid var(--brand-line); background: var(--brand-soft); color: var(--brand-ink);
+    }
+    .tag.up { border-color: var(--line); background: #f1f5fc; color: var(--muted); }
+    .tag.warn { border-color: var(--warn-line); background: var(--warn-bg); color: var(--warn-ink); }
+    .tag.danger { border-color: var(--danger-line); background: var(--danger-bg); color: var(--danger-ink); }
+    .tag.ok { border-color: var(--ok-line); background: var(--ok-bg); color: var(--ok-ink); }
+    /* ---------- acceptance ---------- */
+    .acceptance-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+    .acceptance-list li {
+      display: flex; gap: 14px; align-items: flex-start;
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: var(--radius); padding: 14px 18px; box-shadow: var(--shadow);
+      font-size: 13.5px;
+    }
+    .acceptance-list .a-id {
+      flex-shrink: 0; width: 34px; height: 34px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--brand-soft); color: var(--brand-ink);
+      font-weight: 700; font-size: 12.5px; border-radius: 10px;
+    }
+    .acceptance-list code { white-space: nowrap; }
+    /* ---------- footer ---------- */
+    .document-control {
+      border-top: 1px solid var(--line); margin-top: 20px; padding-top: 22px;
+      color: var(--muted); font-size: 12.5px;
+      display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+    }
+    .back-to-top {
+      position: fixed; right: 26px; bottom: 26px; z-index: 60;
+      width: 42px; height: 42px; border-radius: 50%;
+      border: 1px solid var(--brand-line); background: #fff; color: var(--brand);
+      font-size: 17px; cursor: pointer; box-shadow: var(--shadow);
+      opacity: 0; pointer-events: none; transition: opacity .2s ease;
+    }
+    .back-to-top.visible { opacity: 1; pointer-events: auto; }
+    @media (max-width: 960px) {
+      .page-shell { flex-direction: column; padding: 20px 18px 70px; }
+      .sidebar { position: static; width: 100%; }
+      #toc { flex-direction: row; flex-wrap: wrap; }
+      .hero { flex-direction: column; padding: 28px 24px; }
+      .hero-summary { flex-direction: row; }
+      .hero-summary div { flex: 1; }
+    }
+    @media print {
+      .topbar, .sidebar, .back-to-top { display: none; }
+      body { background: #fff; }
+      .page-shell { max-width: none; padding: 0; display: block; }
+      .hero, .callout, .decision-grid article, .table-wrap, .acceptance-list li { box-shadow: none; break-inside: avoid; }
+      .doc-section { margin-bottom: 34px; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">跳到正文</a>
+  <header class="topbar">
+    <a class="brand" href="#overview" aria-label="返回文档首页">
+      <span class="brand-mark">PLAN</span>
+      <span>
+        <strong>PaddleSeg 实验代码精简方案</strong>
+        <small>评审稿 · DigiBoard 对比实验与消融实验</small>
+      </span>
+    </a>
+    <div class="topbar-actions">
+      <button type="button" class="primary-button" id="print-document">打印 / 导出 PDF</button>
+    </div>
+  </header>
+  <div class="page-shell">
+    <aside class="sidebar" aria-label="文档导航">
+      <nav id="toc">
+        <a href="#overview">方案总览</a>
+        <a href="#paper">1 论文实验解析</a>
+        <a href="#comparison">1.1 对比实验</a>
+        <a href="#ablation">1.2 消融实验</a>
+        <a href="#out-of-scope">1.3 范围外实验</a>
+        <a href="#code-map">2 代码定位</a>
+        <a href="#map-comparison">2.1 对比实验代码地图</a>
+        <a href="#map-ablation">2.2 消融实验代码地图</a>
+        <a href="#map-runs">2.3 运行产物对照</a>
+        <a href="#map-custom">2.4 自定义 vs 上游</a>
+        <a href="#map-sources">2.5 证据来源</a>
+        <a href="#map-table">2.6 表格 ↔ 版本对照</a>
+        <a href="#restore">2.7 Ours 恢复清单</a>
+        <a href="#slimming">3 精简方案</a>
+        <a href="#keep">3.1 保留集</a>
+        <a href="#remove">3.2 分级删除清单</a>
+        <a href="#method">3.3 处置方式</a>
+        <a href="#risk">4 风险与验收</a>
+        <a href="#decisions">5 决策状态</a>
+        <a href="#executed">6 执行记录</a>
+        <a href="#eval-ext">7 评测扩展</a>
+        <a href="#video-eval">7.3 恢复质量评估</a>
+        <a href="#changelog">变更记录</a>
+      </nav>
+      <div class="sidebar-note">
+        <strong>文档定位</strong>
+        <p>内部评审稿（v0.1，待审）。仅做规划，<b>不改动 PaddleSeg 代码</b>。锁定 IEEE TMC 论文《DigiBoard》的<b>对比实验（TABLE III）</b>与<b>消融实验（TABLE VI）</b>两条实验线，逐项定位其代码位置并给出「最小可复现」精简方案。</p>
+      </div>
+    </aside>
+    <main id="main-content">
+      <section class="hero doc-section" id="overview">
+        <div class="hero-copy">
+          <p class="eyebrow">方案评审稿 · Plan for Review</p>
+          <h1>PaddleSeg 实验代码精简方案</h1>
+          <p class="hero-lead">把论文《DigiBoard: Occlusion-Free Whiteboard Digitization at the Edge》(IEEE TMC) 的<b>对比实验</b>与<b>消融实验</b>两类实验，一次性映射到 PaddleSeg 的配置、模型、骨干、数据集与运行产物上；再据此把当前 5.6 万个文件、约 8 GB 的仓库收敛为一条「最小可复现」实验线。本稿只出方案、不动代码。<b>已核实「Ours」= <code>repvit_v8_7</code>（<code>MobileSegV3</code> + <code>RepViTBackboneV8</code>），而该配置当前已不在工作区</b>——见 §2.2。</p>
+          <div class="meta-row" aria-label="文档元数据">
+            <span>版本 1.4（已执行）</span>
+            <span>生成日期：2026-10-12</span>
+            <span>依据：TMC-DigiBoard（13 页）</span>
+            <span>佐证：<code>Desktop\结果.md</code>（实验日志）</span>
+            <span>目标仓库：<code>Desktop\PaddleSeg</code></span>
+          </div>
+        </div>
+        <div class="hero-summary" aria-label="核心数字">
+          <div><strong>2</strong><span>类实验（对比 / 消融）</span></div>
+          <div><strong>6</strong><span>个对比模型</span></div>
+          <div><strong>7</strong><span>个消融变体</span></div>
+          <div><strong>5</strong><span>项待审决策</span></div>
+        </div>
+      </section>
+      <section class="callout callout ok" aria-label="总体结论">
+        <div>
+          <span class="callout-label">总体结论</span>
+          <h2>两类实验 = 一条「语义分割 + PP-HumanSeg14K」的线</h2>
+        </div>
+        <p><b>对比实验</b>是 6 个轻量分割模型在同一数据集与协议下的横向比较（论文 TABLE III）；<b>消融实验</b>是在 RepViT 骨干上逐步加 GAM / ASPP / PPM / MSF 的纵向拆分（论文 TABLE VI）。两者在代码上落在同一条链：<code>configs/</code> 选模型与超参 → <code>paddleseg/models/</code> 定义模型与骨干 → <code>paddleseg/datasets/pp_humanseg14k.py</code> 读数据 → <code>tools/train.py · val.py · predict.py</code> 跑训练与评测。</p>
+        <p>因此「去膨胀」有明确边界：仓库里约 <b>95%</b> 的目录（<code>contrib/</code>、<code>EISeg/</code>、<code>Matting/</code>、<code>deploy/</code>、<code>test_tipc/</code> 等）与这两类实验零依赖，可整目录移除；<code>paddleseg/</code> 内部则按「这条线要不要 import」逐个裁剪。</p>
+      </section>
+      <!-- ==================== 1 paper ==================== -->
+      <section class="doc-section" id="paper">
+        <div class="section-heading">
+          <h2>1 论文实验解析</h2>
+          <p>论文第四节 EXPERIMENTS AND RESULTS 里，与本仓库训练侧直接相关的是 TABLE III（对比）与 TABLE VI（消融）。</p>
+        </div>
+        <h3 class="sub-heading" id="comparison">1.1 对比实验（TABLE III + Fig. 7）</h3>
+        <p class="note">数据集 <b>PP-HumanSeg14K</b>（14,117 帧 / 291 段视频 / 23 类环境）；单一训练-测试协议；指标含 mIoU、Acc、Kappa、Dice、Params、FLOPs、Latency。论文结论：本方法在四项精度指标上全面领先，且参数量（1.97M）与 FLOPs（0.102G）最小，延迟 10.64 ms 满足实时。</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>模型</th><th>mIoU</th><th>Acc</th><th>Kappa</th><th>Dice</th><th>PSNR</th><th>SSIM</th><th>Params</th><th>FLOPs</th><th>Latency</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>DeepLabV3p</td><td>0.8806</td><td>0.9485</td><td>0.8715</td><td>0.9357</td><td>—</td><td>—</td><td>12.38M</td><td>7.825G</td><td>6.82 ms</td></tr>
+              <tr><td>BiSeNetV2</td><td>0.8882</td><td>0.9532</td><td>0.8801</td><td>0.9401</td><td>—</td><td>—</td><td>2.33M</td><td>1.138G</td><td>9.37 ms</td></tr>
+              <tr><td>PP-HumanSegV2-Lite</td><td>0.8653</td><td>0.9428</td><td>0.8534</td><td>0.9267</td><td><b>17.06</b></td><td><b>0.9217</b></td><td>2.97M</td><td>0.207G</td><td>12.38 ms</td></tr>
+              <tr><td>PP-LiteSeg</td><td>0.8294</td><td>0.9242</td><td>0.8102</td><td>0.9051</td><td>—</td><td>—</td><td>12.08M</td><td>1.303G</td><td>13.62 ms</td></tr>
+              <tr><td>EfficientFormerV2-Seg</td><td>0.8932</td><td>0.9546</td><td>0.8859</td><td>0.9429</td><td><b>22.63</b></td><td><b>0.9335</b></td><td>5.75M</td><td>2.287G</td><td>9.81 ms</td></tr>
+              <tr><td><b>Ours（本文方法）</b></td><td><b>0.9096</b></td><td><b>0.9621</b></td><td><b>0.9044</b></td><td><b>0.9522</b></td><td>—</td><td>—</td><td><b>1.97M</b></td><td><b>0.102G</b></td><td>10.64 ms</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="tbl-cap">TABLE III · PP-HumanSeg14K 基准上的性能对比（复刻自论文原文）。Fig. 7 为同一批模型在 Portrait16K 上的定性可视化对比。</p>
+        <p class="note"><b>PSNR / SSIM 为新增列</b>（论文原表没有），由仓库的 <code>tools/val.py</code> 在本机实测，算在<b>二值化前景掩膜</b>上（见 §7.1）。<b>「—」= 该行没有留存权重</b>（DeepLabV3p / PP-LiteSeg / Ours 的 checkpoint 已不在 <code>output/</code>），需重训才能补。另：PP-HumanSegV2-Lite 本次实测 mIoU 为 <b>0.8653</b>，与论文原表的 0.8631 略有差异（非同一轮训练）。</p>
+        <h3 class="sub-heading" id="ablation">1.2 消融实验（TABLE VI + Fig. 10）</h3>
+        <p class="note">在 PP-HumanSeg14K 上，从 RepViT 基线出发，按 <b>GAM → ASPP → PPM → MSF</b> 的次序逐步加模块，观察 mIoU 与延迟的联合变化。论文结论：完整 EASPP（GAM + PPM(124) + ASPP + MSF）达到 90.96% mIoU，且延迟 10.64 ms 优于基线之外的多数中间体。Fig. 10 另给出<b>掩码形态学膨胀</b>的定性消融（修复边界残留）。</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>变体（论文 TABLE VI 行）</th><th>mIoU</th><th>Latency</th><th>PSNR</th><th>SSIM</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>RepViT-Baseline</td><td>88.48%</td><td>12.71 ms</td><td><b>20.48</b></td><td><b>0.9310</b></td></tr>
+              <tr><td>RepViT + GAM</td><td>88.93%</td><td>9.90 ms</td><td><b>20.66</b></td><td><b>0.9321</b></td></tr>
+              <tr><td>RepViT + GAM + ASPP</td><td>90.44%</td><td>9.39 ms</td><td>—</td><td>—</td></tr>
+              <tr><td>RepViT + GAM + PPM(1236) + FM</td><td>90.23%</td><td>11.48 ms</td><td>—</td><td>—</td></tr>
+              <tr><td>RepViT + GAM + PPM(1236) + ASPP + FM</td><td>89.09%</td><td>12.14 ms</td><td><b>22.38</b></td><td><b>0.9329</b></td></tr>
+              <tr><td>RepViT + GAM + PPM(124) + ASPP + FM</td><td>89.41%</td><td>10.39 ms</td><td>—</td><td>—</td></tr>
+              <tr><td><b>RepViT + GAM + PPM(124) + ASPP + MSF</b></td><td><b>90.96%</b></td><td><b>10.64 ms</b></td><td>—</td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="tbl-cap">TABLE VI · 分割模型消融（复刻自论文原文）。GAM = Global Attention Module；PPM(1236)/PPM(124) = 金字塔池化尺度；FM = 常规 PPM 特征融合；MSF = 提出的多尺度特征融合。</p>
+        <p class="note"><b>PSNR / SSIM 为新增列</b>（论文原表没有），由仓库的 <code>tools/val.py</code> 在本机实测，算在<b>二值化前景掩膜</b>上（见 §7.1）。「—」= 该行没有留存权重。本次已把 <code>MobileSegV4 / V5 / V11</code> 注册进 <code>models/__init__.py</code>，因此 <code>repvit_v8_18</code>（本表第 5 行）成功测出：mIoU 0.8909 与论文的 89.09 一致，PSNR 22.38 / SSIM 0.9329。</p>
+        <h3 class="sub-heading" id="out-of-scope">1.3 明确排除在本次范围之外的实验</h3>
+        <p class="note">避免范围蔓延——以下实验<b>不属于</b>本次「PaddleSeg 训练侧」精简范围，如需单独规划请另立文档：</p>
+        <div class="table-wrap compact">
+          <table>
+            <thead><tr><th>论文位置</th><th>内容</th><th>为何不在本仓库范围</th></tr></thead>
+            <tbody>
+              <tr><td>TABLE IV</td><td>OCR 定量评估（白板内容增强前后）</td><td>属系统级评测，用 PaddleOCR，不涉及 PaddleSeg 分割训练</td></tr>
+              <tr><td>TABLE V</td><td>端到端延迟拆解（Mi 10 手机）</td><td>属移动端推理性能，用 PaddlePaddle Lite，不涉及训练代码</td></tr>
+              <tr><td>Fig. 8 / Fig. 9</td><td>光照与载体鲁棒性（定性）</td><td>属系统输出可视化，非模型训练产物</td></tr>
+              <tr><td>Sec. IV-C 背景修复</td><td>时序背景缓存 / 动态修补 / 形态学膨胀</td><td>算法在移动端渲染管线内实现，仓库中仅以 Fig. 10 提及</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <!-- ==================== 2 code map ==================== -->
+      <section class="doc-section" id="code-map">
+        <div class="section-heading">
+          <h2>2 代码定位</h2>
+          <p>这两部分实验的代码在 PaddleSeg 中的确切位置：配置、模型、骨干、数据集、工具，以及已跑出的运行产物。</p>
+        </div>
+        <div class="callout warning">
+          <div>
+            <span class="callout-label">读法提示</span>
+            <h3>哪些是「事实」，哪些是「推断」</h3>
+          </div>
+          <p>下表中 <span class="tag up">上游</span> / <span class="tag">自定义</span> 为已核实的仓库事实（来自 <code>git status</code> 与文件内容）。<b>论文表格行 ↔ 具体 config 的一一对应</b>目前是由配置命名、模型组成与 <code>output/</code> 运行目录推断得出的，已用 <span class="tag warn">待确认</span> 标出；确认后可按此收敛。</p>
+        </div>
+        <h3 class="sub-heading" id="map-comparison">2.1 对比实验（TABLE III）代码地图</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>论文对象</th><th>模型实现（<code>paddleseg/models/</code>）</th><th>配置入口</th><th>来源</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>DeepLabV3p</td>
+                <td><code>deeplab.py</code> → <code>DeepLabV3P</code></td>
+                <td><code>configs/deeplabv3p/*.yml</code>（上游为 cityscapes / voc12aug，需改 <code>num_classes: 2</code> 与数据集路径）</td>
+                <td><span class="tag up">上游</span></td>
+              </tr>
+              <tr>
+                <td>BiSeNetV2</td>
+                <td><code>bisenet.py</code> → <code>BiSeNetV2</code></td>
+                <td><code>configs/bisenet/bisenet_cityscapes_1024x1024_160k.yml</code>；<code>configs/quick_start/bisenet_optic_disc_512x512_1k.yml</code></td>
+                <td><span class="tag up">上游</span></td>
+              </tr>
+              <tr>
+                <td>PP-HumanSegV2-Lite</td>
+                <td><code>pphumanseg_lite.py</code> → <code>PPHumanSegLite</code>（<span class="tag">已改</span>）</td>
+                <td><code>configs/quick_start/portrait_pp_humansegv2_lite.yml</code></td>
+                <td><span class="tag">自定义</span></td>
+              </tr>
+              <tr>
+                <td>PP-LiteSeg</td>
+                <td><code>pp_liteseg.py</code> → <code>PPLiteSeg</code>（骨干 <code>stdcnet.py</code>）</td>
+                <td><code>configs/pp_liteseg/*.yml</code>；<code>configs/quick_start/pp_liteseg_optic_disc_512x512_1k.yml</code></td>
+                <td><span class="tag up">上游</span></td>
+              </tr>
+              <tr>
+                <td>EfficientFormerV2-Seg</td>
+                <td><code>efficientformerv2_seg.py</code> → <code>EfficientFormerSeg</code>；骨干 <code>backbones/efficientformerv2.py</code>（<span class="tag">已改</span>）</td>
+                <td><code>configs/quick_start/efficientv2.yml</code>、<code>efficientv2_16k.yml</code>；<code>configs/efficientformerv2/efficientformerv2_s2_ade20k_512x512_40k.yml</code>（<span class="tag">已改</span>）</td>
+                <td><span class="tag">自定义</span></td>
+              </tr>
+              <tr>
+                <td><b>Ours（本文方法）</b></td>
+                <td><code>mobilesegv3.py</code> → <code>MobileSegV3</code>（「改进 EPPM」：PPM 分支逐元素相加后再与 ASPP 分支 concat）；骨干 <code>backbones/repvit_v8.py</code> → <code>RepViTBackboneV8</code></td>
+                <td><code>configs/quick_start/repvit_v8_7.yml</code> <span class="tag danger">工作区已缺失</span>（可从 <code>结果.md</code> 完整还原）</td>
+                <td><span class="tag">自定义</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="tbl-cap">已核实：<code>repvit_v8_7.yml</code> 的验证结果为 mIoU <b>0.9096</b> / Acc <b>0.9621</b> / Kappa <b>0.9044</b> / Dice <b>0.9522</b>，Params 1.97M、FLOPs 0.102G、延迟 10.64 ms，与 TABLE III 的 Ours 行逐位吻合。注意 <code>final.yml</code>（MobileNetV3 骨干）是后来的部署/导出配置，不是论文口径。</p>
+        <h3 class="sub-heading" id="map-ablation">2.2 消融实验（TABLE VI）代码地图</h3>
+        <div class="callout ok">
+          <div>
+            <span class="callout-label">已核实 Ours</span>
+            <h3><code>repvit_v8_7</code> = <code>MobileSegV3</code> + <code>RepViTBackboneV8</code></h3>
+          </div>
+          <p><code>结果.md</code>（2025-10-21）记录该次训练的验证结果：mIoU <b>0.9096</b> / Acc <b>0.9621</b> / Kappa <b>0.9044</b> / Dice <b>0.9522</b>，Params <b>1,970,060</b>、FLOPs <b>102,694,496</b>、延迟 <b>10.64 ms</b> —— 与论文 TABLE III 的 Ours 行逐位吻合。模型代码在位（<code>paddleseg/models/mobilesegv3.py</code>），但配置与注册都已不在工作区。</p>
+        </div>
+        <p class="note"><code>结果.md</code> 记录的是一条四步演进线（骨干固定 <code>RepViTBackboneV8</code>，除标注外均为无预训练协议）：</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>步骤</th><th>改动</th><th>模型（类 / 关键模块）</th><th>配置</th><th>mIoU</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>步 1</td><td>基线：MobileSeg 直接换 RepViT V8</td><td><code>MobileSeg</code></td><td><code>repvit_v8.yml</code></td><td>0.8688</td></tr>
+              <tr><td>步 2</td><td>增强上下文模块：PPM[1,2,4] + ASPP(6,12,18) + 全局上下文注意力</td><td><code>MobileSegV2</code> · <code>EnhancedMobileContextModule</code></td><td><code>repvit_v8_5.yml</code> <span class="tag danger">已缺失</span></td><td>0.9021</td></tr>
+              <tr><td>步 3</td><td>同上 + 加预训练权重（旁支，论文未采用）</td><td><code>MobileSegV2</code></td><td><code>repvit_v8_6.yml</code> <span class="tag danger">已缺失</span></td><td>0.9542</td></tr>
+              <tr><td><b>步 4</b></td><td><b>改进 EPPM：PPM 先逐元素相加，再与 ASPP concat</b></td><td><code>MobileSegV3</code> · <code>EnhancedMobileContextModule</code></td><td><code>repvit_v8_7.yml</code> <span class="tag danger">已缺失</span></td><td><b>0.9096 = Ours</b></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="tbl-cap">「Ours」的实验口径是<b>无预训练</b>的那一支（步 4）。步 3 因为加了预训练权重而数值更高（0.9542），但不属于论文的消融协议，不能与 TABLE VI 混用。</p>
+        <div class="callout danger">
+          <div>
+            <span class="callout-label">复现风险</span>
+            <h3>当前工作区缺「Ours」</h3>
+          </div>
+          <p><code>configs/quick_start/repvit_v8_1 … v8_7.yml</code> 整代配置都不在工作区（只剩 <code>output/repvit_v8_1</code> 的权重）；<code>MobileSegV3</code> 虽有文件，但<b>未在 <code>paddleseg/models/__init__.py</code> 注册</b>，因此按现状无法加载「Ours」。好消息：<code>结果.md</code> 完整保存了每一步的 yml 与模型代码，可逐字还原。</p>
+        </div>
+        <p class="note">消融主线现已完整定位（见 §2.6）：<code>消融实验.md</code> 里的 <code>repvit_v8_7 / v8_9 / v8_15 / v8_16 / v8_18 / v8_20</code> 恰好对应 TABLE VI 的七行。工作区现存的 <code>repvit_v8_14 / 17 / 18 / 19 / 20</code> 只是这条线的一个子集，其中若干（如 v8_19）并未进表。</p>
+        <p class="note">骨干自身的迭代线（<code>repvit.yml</code>、<code>repvit_v2..v8.yml</code> → <code>RepViTBackbone V1–V8</code>）属选型探索，不直接对应 TABLE VI，但共用同一套配置骨架。</p>
+        <h3 class="sub-heading" id="map-runs">2.3 运行产物 ↔ 配置对照（<code>output/</code>）</h3>
+        <p class="note">体量合计约 <b>5.0 GB</b>。<code>output/</code> 的目录名大多与 <code>configs/quick_start/</code> 同名，但<b>并非一一对应</b>：<code>output/repvit_v8_1</code> 已无同名配置（那一代配置整体缺失）；论文 Ours 的权证 <code>output/repvit_v8_7</code> 同样不在工作区。</p>
+        <div class="table-wrap compact">
+          <table>
+            <thead><tr><th>运行目录</th><th>模型</th><th>骨干</th><th>归属</th></tr></thead>
+            <tbody>
+              <tr><td><code>output/repvit_v8</code>, <code>repvit_v2..v7</code>, <code>repvit</code></td><td>MobileSeg</td><td>RepViTBackbone V1–V8</td><td>骨干探索 / 消融基线</td></tr>
+              <tr><td><code>output/repvit_v8_1</code></td><td>MobileSeg</td><td>RepViTBackboneV8</td><td>预训练权重实验（<code>repvit_v8_1.yml</code> 已缺失）</td></tr>
+              <tr><td><code>output/repvit_v8_14</code></td><td>MobileSegV2</td><td>RepViTBackboneV8</td><td>消融阶梯</td></tr>
+              <tr><td><code>output/repvit_v8_17</code></td><td>MobileSegV10</td><td>RepViTBackboneV8</td><td>消融阶梯</td></tr>
+              <tr><td><code>output/repvit_v8_18</code></td><td>MobileSegV11</td><td>RepViTBackboneV8</td><td>消融阶梯</td></tr>
+              <tr><td><code>output/repvit_v8_19</code></td><td>MobileSegV12</td><td>RepViTBackboneV8</td><td>消融阶梯</td></tr>
+              <tr><td><code>output/repvit_v8_20</code></td><td>MobileSegV13</td><td>RepViTBackboneV8</td><td>消融（后期重编号一代）</td></tr>
+              <tr><td><code>output/final</code></td><td>MobileSegV2</td><td>MobileNetV3_large_x1_0</td><td>部署 / 导出候选</td></tr>
+              <tr><td><code>output/portrait_pp_humansegv2_lite</code></td><td>MobileSeg</td><td>MobileNetV3_large_x1_0</td><td>对比基线（PP-HumanSegV2-Lite）</td></tr>
+              <tr><td><code>output/efficentv2</code>, <code>efficentv2_16k</code></td><td>EfficientFormerSeg</td><td>RepViTBackboneV8</td><td>对比基线（EfficientFormerV2-Seg）</td></tr>
+              <tr><td><code>output/mambaVision</code></td><td>MobileSeg</td><td>MambaVision</td><td>探索（未进论文，建议归档）</td></tr>
+              <tr><td><code>output/segdeformer</code></td><td>SegDeformer</td><td>RepViTBackboneV8</td><td>探索（未进论文，建议归档）</td></tr>
+              <tr><td><code>output/offseg</code></td><td>OffSegTiny</td><td>EfficientFormerv2_s1</td><td>探索（未进论文，建议归档）</td></tr>
+              <tr><td><code>output/repvit_segnext</code></td><td>SegNeXt</td><td>RepViTBackboneV8</td><td>探索（未进论文，建议归档）</td></tr>
+              <tr><td><code>output/inference_model</code>, <code>output/test</code></td><td>—</td><td>—</td><td>导出与预测产物</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3 class="sub-heading" id="map-custom">2.4 自定义 vs 上游：改动清单</h3>
+        <p class="note">来自 <code>git status</code>（仓库 clone 自 gitee.com/paddlepaddle/PaddleSeg；<code>M</code> = 已修改上游文件，<code>A</code> = 新增文件）。这是判断「哪些是实验代码、哪些是上游包袱」的权威依据。</p>
+        <div class="table-wrap compact">
+          <table>
+            <thead><tr><th>类别</th><th>文件</th><th>与实验的关系</th></tr></thead>
+            <tbody>
+              <tr><td rowspan="6"><b>模型</b><br><span class="tag">自定义</span></td><td><code>paddleseg/models/mobilesegv2 · v3 · v10 · v12 · v13.py</code></td><td><b>消融主体</b>（已注册；<code>v3</code> 未注册）</td></tr>
+              <tr><td><code>paddleseg/models/mobilesegv4 · v5 · v11.py</code></td><td>消融中间体（<b>未注册</b>，属死代码，但保留为证据）</td></tr>
+              <tr><td><code>paddleseg/models/efficientformerv2_seg.py</code></td><td>对比基线 EfficientFormerV2-Seg</td></tr>
+              <tr><td><code>paddleseg/models/segnext.py</code> / <code>segdeformer.py</code> / <code>offseg.py</code> / <code>mamba_vision.py</code></td><td>探索性模型（未进论文）</td></tr>
+              <tr><td><code>paddleseg/models/mobileseg.py</code>（M）· <code>pphumanseg_lite.py</code>（M）</td><td>基线微调</td></tr>
+              <tr><td><code>paddleseg/models/__init__.py</code>（M）</td><td>模型注册入口（裁剪时必须同步改）</td></tr>
+              <tr><td rowspan="5"><b>骨干</b><br><span class="tag">自定义</span></td><td><code>backbones/repvit.py</code>, <code>repvit_torch.py</code>, <code>repvit_v2 · v4 · v5 · v6 · v7 · v8.py</code></td><td><b>骨干线</b>（V2–V8）</td></tr>
+              <tr><td><code>backbones/mamba_vision.py</code>, <code>Segman_encoder.py</code></td><td>探索性骨干</td></tr>
+              <tr><td><code>backbones/efficientformerv2.py</code>（M）, <code>mobilenetv2.py</code>（M）</td><td>基线微调</td></tr>
+              <tr><td><code>backbones/__init__.py</code>（M）</td><td>骨干注册入口</td></tr>
+              <tr><td><code>backbones/Segman_encoder_paddle.py</code>, <code>resnet_ms3.py</code> 等</td><td>未接入注册，属死代码</td></tr>
+              <tr><td><b>数据</b></td><td><code>paddleseg/datasets/pp_humanseg14k.py</code>（M）</td><td><b>两类实验共用的数据集类</b> <code>PPHumanSeg14K</code></td></tr>
+              <tr><td><b>工具</b></td><td><code>tools/model_info.py</code>, <code>model_predictor.py</code>, <code>export_model.py</code>（A）；<code>predict.py</code>, <code>val.py</code>（M）</td><td>PARAMS / FLOPs / 延迟评测与导出</td></tr>
+              <tr><td><b>测试</b></td><td><code>tests/mask.py</code>（A）</td><td>推理掩码叠加可视化（Fig. 7 / Fig. 10 类图）</td></tr>
+              <tr><td><b>配置</b></td><td><code>configs/quick_start/*.yml</code>（25 个，其中 21 个为 A/M）</td><td>实验入口</td></tr>
+              <tr><td><b>证据</b></td><td><code>结果.md</code>（桌面，5,572 行实验日志）</td><td><b>唯一完整记录</b>：含已缺失的 <code>repvit_v8_1…v8_7</code> 的 yml 与模型代码</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3 class="sub-heading" id="map-sources">2.5 证据来源与可信度</h3>
+        <p class="note">本次定位的结论来自四份材料，可信度递减：</p>
+        <div class="table-wrap compact">
+          <table>
+            <thead><tr><th>来源</th><th>提供什么</th><th>可信度</th></tr></thead>
+            <tbody>
+              <tr><td><code>TMC.pdf</code></td><td>两张表的目标数值与协议（数据集、指标、7 行变体名）</td><td><span class="tag ok">权威</span></td></tr>
+              <tr><td><code>消融实验.md</code></td><td><b>两表的出处</b>：逐小节的代码 + yml + train/val 命令 + 实测 mIoU/延迟，覆盖 TABLE VI 全部七行与 TABLE III 多数基线</td><td><span class="tag ok">权威（出处）</span></td></tr>
+              <tr><td><code>结果.md</code></td><td>每一步的模型代码 + yml + train/val 命令 + 实测 mIoU/延迟</td><td><span class="tag ok">权威（且含已丢失内容）</span></td></tr>
+              <tr><td><code>log/workerlog.0</code></td><td>2026-01 一轮 86 次运行的完整 config 与 best mIoU</td><td><span class="tag">可靠（拼合轮次之一）</span></td></tr>
+              <tr><td><code>git status</code> + 文件系统</td><td>哪些是自定义、哪些是上游；当前工作区实际留存</td><td><span class="tag ok">权威</span></td></tr>
+              <tr><td>配置命名推断</td><td>未见于日志的行 ↔ run 对应</td><td><span class="tag ok">已基本消解</span>（仅剩 TABLE VI 基线行待确认）</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3 class="sub-heading" id="map-table">2.6 论文表格 ↔ 版本 ↔ run 对照表</h3>
+        <p class="note">出处找到了：<code>消融实验.md</code>（7,580 行）按小节把每一步的<b>代码 + yml + train/val 命令 + 实测值</b>全部记下来了。两表每一行现在都能落到「小节 → config → 数值」。<span class="tag ok">已核实</span> = mIoU（含延迟）逐位吻合；<span class="tag warn">待确认</span> = 数值能对上但归属存疑。</p>
+        <h4 class="sub-heading" style="margin:24px 0 10px;font-size:14.5px;color:var(--muted)">TABLE III · 性能对比（6 行）</h4>
+        <div class="table-wrap compact">
+          <table>
+            <thead><tr><th>论文行</th><th>mIoU</th><th><code>消融实验.md</code> 小节</th><th>config</th><th>证据</th></tr></thead>
+            <tbody>
+              <tr><td>DeepLabV3p</td><td>0.8806</td><td><code>Deeplabv3p</code></td><td><code>deeplabv3p_resnet18_os8.yml</code></td><td><span class="tag ok">已核实</span> · 0.8806 / 6.82 ms</td></tr>
+              <tr><td>BiSeNetV2</td><td>0.8882</td><td><code>BisnetV2</code></td><td><code>bisenet.yml</code></td><td><span class="tag ok">已核实</span> · 0.8882</td></tr>
+              <tr><td>PP-HumanSegV2-Lite</td><td>0.8631</td><td>（PP-HumanSeg 主线）</td><td><code>portrait_pp_humansegv2_lite.yml</code></td><td><span class="tag ok">已核实</span> · 0.8631 / 12.38 ms</td></tr>
+              <tr><td>PP-LiteSeg</td><td>0.8294</td><td><code>PP_LiteSeg</code></td><td><code>pp_liteseg_stdc2.yml</code></td><td><span class="tag ok">已核实</span> · 0.8294 / 13.62 ms</td></tr>
+              <tr><td>EfficientFormerV2-Seg</td><td>0.8932</td><td>（EfficientFormer 线）</td><td><code>efficientv2.yml</code></td><td><span class="tag ok">已核实</span> · workerlog run 84</td></tr>
+              <tr><td><b>Ours</b></td><td><b>0.9096</b></td><td><b><code>1.PPM和ASPP拼接</code></b></td><td><b><code>repvit_v8_7.yml</code></b></td><td><span class="tag ok">已核实</span> · 0.9096 / 10.64 ms</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h4 class="sub-heading" style="margin:24px 0 10px;font-size:14.5px;color:var(--muted)">TABLE VI · 分割模型消融（7 行）</h4>
+        <div class="table-wrap compact">
+          <table>
+            <thead><tr><th>论文行</th><th>mIoU</th><th><code>消融实验.md</code> 小节</th><th>config</th><th>证据</th></tr></thead>
+            <tbody>
+              <tr><td>RepViT-Baseline</td><td>88.48</td><td><code>Repvit version7</code>（在 <code>结果.md</code>）</td><td><code>repvit_v7.yml</code></td><td><span class="tag ok">已核实</span> · 0.8848 / 12.71 ms</td></tr>
+              <tr><td>+ GAM</td><td>88.93</td><td><code>只有GAM</code></td><td><code>repvit_v8_20.yml</code></td><td><span class="tag ok">已核实</span> · 0.8893 / 9.90 ms</td></tr>
+              <tr><td>+ GAM + ASPP</td><td>90.44</td><td><code>5.只有ASPP</code></td><td><code>repvit_v8_15.yml</code></td><td><span class="tag ok">已核实</span> · 0.9044（该小节延迟未记）</td></tr>
+              <tr><td>+ GAM + PPM(1236) + FM</td><td>90.23</td><td><code>只有PPM</code></td><td><code>repvit_v8_16.yml</code></td><td><span class="tag ok">已核实</span> · 0.9023 / 11.48 ms</td></tr>
+              <tr><td>+ GAM + PPM(1236) + ASPP + FM</td><td>89.09</td><td><code>RepViT+GAM+PPM(1236)+ASPP+FM</code></td><td><code>repvit_v8_18.yml</code></td><td><span class="tag ok">已核实</span> · 0.8909 / 12.14 ms</td></tr>
+              <tr><td>+ GAM + PPM(124) + ASPP + FM</td><td>89.41</td><td><code>3.PPM不进行逐元素相加和ASPP以及自身进行拼接</code></td><td><code>repvit_v8_9.yml</code></td><td><span class="tag ok">已核实</span> · 0.8941 / 10.39 ms</td></tr>
+              <tr><td><b>+ GAM + PPM(124) + ASPP + MSF</b></td><td><b>90.96</b></td><td><b><code>1.PPM和ASPP拼接</code></b></td><td><b><code>repvit_v8_7.yml</code></b></td><td><span class="tag ok">已核实</span> · 0.9096 / 10.64 ms</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="tbl-cap">自洽性检查通过：TABLE III 的 Ours 与 TABLE VI 末行同值（0.9096 / 10.64 ms），确实出自同一次训练（<code>1.PPM和ASPP拼接</code> → <code>repvit_v8_7.yml</code>）。</p>
+        <h4 class="sub-heading" style="margin:24px 0 10px;font-size:14.5px;color:var(--muted)">消融实验.md 里做过、但没进论文的旁支（建议一并归档）</h4>
+        <div class="table-wrap compact">
+          <table>
+            <thead><tr><th>小节</th><th>config</th><th>mIoU</th><th>备注</th></tr></thead>
+            <tbody>
+              <tr><td><code>1.SegHead->边界感知优化</code></td><td><code>repvit_v8_10.yml</code></td><td>0.9102</td><td>高于 Ours，但未采用</td></tr>
+              <tr><td><code>2.decoder 与 head 之间加边界细化模块</code></td><td><code>repvit_v8_11.yml</code></td><td>0.8975</td><td>未采用</td></tr>
+              <tr><td><code>2.PPM逐元素相加和ASPP拼接</code></td><td><code>repvit_v8_8.yml</code></td><td>0.9008</td><td>EPPM 的另一种拼法</td></tr>
+              <tr><td><code>4.PPM和ASPP拼接（PPM[1,2,4]→[1,2,3,6]）</code></td><td><code>repvit_v8_12.yml</code></td><td>0.8826</td><td>PPM(1236) 的另一档</td></tr>
+              <tr><td><code>RepViT+GAM+PPM(1236)+MSF</code></td><td><code>repvit_v8_17.yml</code></td><td>0.8992</td><td>未进表</td></tr>
+              <tr><td><code>==PPM和ASPP拼接使用16K数据集==</code></td><td><code>repvit_v8_14.yml</code></td><td>0.9072</td><td>Portrait16K 口径</td></tr>
+              <tr><td><code>PPM和ASPP拼接使用16K数据集</code>（PP-HumanSeg）</td><td><code>pphumanseg.yml</code></td><td>0.8760</td><td>16K 对照</td></tr>
+              <tr><td><code>PSPNet</code></td><td><code>pspnet.yml</code></td><td>0.8970</td><td>额外对照，未进 TABLE III</td></tr>
+              <tr><td><code>mambaVision</code></td><td><code>mambaVision.yml</code></td><td>0.9467</td><td>探索；延迟 141 ms</td></tr>
+              <tr><td><code>最终版</code></td><td><code>repvit_final.yml</code></td><td>—</td><td>骨干为 <code>RepViTBackboneFinal</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout ok">
+          <div>
+            <span class="callout-label">Q1 结论</span>
+            <h3>最终表格用到的版本（其余保留为档案）</h3>
+          </div>
+          <p><b>配置还原后可核实的模型类对应：</b>TABLE III 的 Ours 与 TABLE VI 末行 = <code>repvit_v8_7.yml</code>（<code>消融实验.md</code> 记 <code>MobileSegV2</code>，<code>结果.md</code> 记 <code>MobileSegV3</code>，见下）；<code>+GAM</code> = <code>V13</code>（<code>repvit_v8_20.yml</code>）；<code>+GAM+ASPP</code> = <code>V9</code>（<code>_15</code>）；<code>+GAM+PPM(1236)+FM</code> = <code>V9</code>（<code>_16</code>）；<code>+GAM+PPM(1236)+ASPP+FM</code> = <code>V11</code>（<code>_18</code>）；<code>+GAM+PPM(124)+ASPP+FM</code> = <code>V4</code>（<code>_9</code>）。对比侧 <code>DeepLabV3P / BiSeNetV2 / PPHumanSegLite / PPLiteSeg / EfficientFormerSeg</code>。<br><b>保留但不进表：</b><code>MobileSeg</code>、<code>repvit_torch.py</code>、<code>Segman_encoder*.py</code>、<code>resnet_ms3.py</code>，以及 <code>MambaVision / SegDeformer / OffSegTiny / SegNeXt / PSPNet</code> 等探索——按既定方针全部留存。</p>
+        </div>
+        <p class="note"><b>两表全部落位。</b>TABLE VI 第 1 行 <b>RepViT-Baseline</b> 的口径经你确认 = <code>结果.md</code> 的 <b>Repvit version7</b>（搜 0.8848 可得）→ <code>repvit_v7.yml</code>，即「纯 RepViT 骨干取到的最佳一档」，而非 MobileSeg 基线。至此论文两张表 13 行全部可追溯到 config 与实测值。</p>
+        <h3 class="sub-heading" id="restore">2.7 「Ours」恢复清单（实施级）</h3>
+        <div class="table-wrap compact">
+          <table>
+            <thead><tr><th>#</th><th>动作</th><th>目标位置</th><th>状态</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>还原整代实验配置 —— <code>消融实验.md</code> 里每小节的 yml 都可逐字复制。至少含 <code>repvit_v8_7 / v8_8 / v8_9 / v8_12 / v8_15 / v8_16 / v8_17 / v8_18 / v8_20</code>、<code>repvit_final</code>、<code>deeplabv3p_resnet18_os8</code>、<code>bisenet</code>、<code>pp_liteseg_stdc2</code>、<code>pspnet</code>、<code>pphumanseg</code> 及 16K 变体（这些现在都不在 <code>configs/quick_start/</code>）</td><td><code>configs/quick_start/</code></td><td><span class="tag ok">已定</span></td></tr>
+              <tr><td>2</td><td>让 <code>MobileSegV3</code> 被导入 —— 装饰器 <code>@manager.MODELS.add_component</code> 已写在 <code>mobilesegv3.py:24</code>，只差一句 import</td><td><code>paddleseg/models/__init__.py</code>：在第 67 行 <code>MobileSegV13</code> 之后加 <code>from .mobilesegv3 import MobileSegV3</code></td><td><span class="tag ok">已定</span></td></tr>
+              <tr><td>3</td><td>骨干注册 —— <code>backbones/__init__.py</code> 已有 <code>from .repvit_v8 import *</code>，<code>RepViTBackboneV8</code> 可直接用</td><td><code>paddleseg/models/backbones/__init__.py</code></td><td><span class="tag ok">无需改动</span></td></tr>
+              <tr><td>4</td><td>权重 —— <code>output/repvit_v8_7/</code> 连同 <code>best_model</code> 都已不在工作区</td><td>—</td><td><span class="tag danger">要复算 0.9096 必须重训</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">注册位置已定：<b>与现状保持一致</b>，放 <code>models/__init__.py</code> —— 仓库里所有模型都在那里，<code>backbones/__init__.py</code> 只放骨干。（<code>models/__init__.py</code> 第 15 行是 <code>from .backbones import *</code>，因此写进 backbones 也能生效，但按现状一致更稳。）</p>
+      </section>
+      <!-- ==================== 3 slimming ==================== -->
+      <section class="doc-section" id="slimming">
+        <div class="section-heading">
+          <h2>3 精简方案</h2>
+          <p>目标：保留一条能跑通「对比 + 消融」两条实验线的最小集合，其余整块移除。当前仓库约 <b>55,868</b> 个文件、磁盘占用约 <b>8.1 GB</b>。</p>
+        </div>
+        <h3 class="sub-heading" id="keep">3.1 保留集（最小可复现集）</h3>
+        <p class="note">保留集的判定标准只有一条：<b>跑这两类实验时会不会被 import / 被读 / 被调用</b>。目标结构如下（约 200–400 个文件）：</p>
+        <pre><code>PaddleSeg/
+├─ configs/
+│  ├─ quick_start/          # 实验入口（现存 25 个；须补回 repvit_v8_7 等缺失配置）
+│  ├─ paper/                # 建议新建：一表一行，收敛为论文口径配置组
+│  └─ _base_/               # 优化器 / 数据集 / 训练调度基类
+├─ paddleseg/
+│  ├─ models/
+│  │  ├─ __init__.py        # 需同步裁剪，只留保留项
+│  │  ├─ deeplab.py  bisenet.py  pp_liteseg.py  pphumanseg_lite.py
+│  │  ├─ efficientformerv2_seg.py  mobileseg.py  mobilesegv*.py
+│  │  ├─ backbones/         # repvit*.py, stdcnet.py, resnet_vd.py, mobilenetv3.py,
+│  │  │                     # efficientformerv2.py, mobilenetv2.py, mamba_vision.py
+│  │  ├─ layers/            # pyramid_pool.py, tensor_fusion.py …（模型依赖）
+│  │  └─ losses/            # CrossEntropy / Lovasz（配置用到的）
+│  ├─ datasets/             # dataset.py, pp_humanseg14k.py（+ voc/ade 可选）
+│  ├─ transforms/           # 配置里用到的增强
+│  └─ core/  cvlibs/  utils/  # 训练 / 评测 / 注册机制骨架
+├─ tools/                   # train.py, val.py, predict.py, export.py, export_model.py,
+│                           # model_info.py, model_predictor.py, analyse.py
+├─ tests/mask.py
+├─ data/portrait14k/  data/portrait16k/   # 数据集（建议移出 git，见 3.3）
+├─ output/                  # 运行产物（不入 git，见 3.3）
+└─ plan/experiment-slimming-plan.html     # 本文档</code></pre>
+        <h3 class="sub-heading" id="remove">3.2 分级删除清单</h3>
+        <p class="note"><b>已于 2026-10-12 执行</b>（详见 §6）。执行方式为<b>移出而非硬删</b>：所有被移除的内容原样保存在仓库同级目录 <code>PaddleSeg-removed-20261012\</code>，随时可移回。<code>deploy/</code>、<code>docs/</code>、<code>data/</code>、<code>.git/</code> 与各运行目录的 <code>best_model/</code> 按计划保留。</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>级别</th><th>对象</th><th>体积 / 文件数</th><th>判断依据</th><th>动作</th></tr></thead>
+            <tbody>
+              <tr><td rowspan="8"><b>L0</b><br>顶层无关目录<br><span class="tag ok">低风险</span></td>
+                  <td><code>contrib/</code>（PaddleLabel / SegmentAnything / MedicalSeg / PanopticSeg / RSSegBenchmark …）</td><td>556.3 MB / 938</td><td>独立示例工程，两类实验零依赖</td><td>整目录移除</td></tr>
+              <tr><td><code>EISeg/</code></td><td>1.5 MB / 215</td><td>交互式标注工具</td><td>整目录移除</td></tr>
+              <tr><td><code>Matting/</code></td><td>1.7 MB / 146</td><td>抠图方向，与分割实验无关</td><td>整目录移除</td></tr>
+              <tr><td><code>deploy/</code>（fastdeploy / android / slim）</td><td>2.4 MB / 271</td><td>部署侧代码，训练不需要</td><td>整目录移除</td></tr>
+              <tr><td><code>test_tipc/</code></td><td>7.6 MB / 231</td><td>上游 CI 全模型测试</td><td>整目录移除</td></tr>
+              <tr><td><code>docs/</code>（上游用户文档 308 篇）</td><td>46.8 MB / 308</td><td>文档</td><td><b>保留</b>（已定：不删 docs 内容；本方案文档留在 <code>docs/</code>）</td></tr>
+              <tr><td><code>.github/</code> + <code>.idea/</code> + <code>paddleseg.egg-info/</code></td><td>—</td><td>工程杂项（CI 配置、IDE 缓存、包元数据）</td><td>整目录移除（纯缓存，可重建）</td></tr>
+              <tr><td><code>2407.08083v2.pdf</code>、<code>batch_prediction_results.json</code>、<code>prediction_results.json</code></td><td>15 MB</td><td>MambaVision 参考论文与临时结果（非本研究论文）</td><td>移出仓库</td></tr>
+              <tr><td rowspan="5"><b>L1</b><br>仓库内部裁剪<br><span class="tag warn">中风险</span></td>
+                  <td><b>保留</b>消融血统：<code>mobileseg.py</code>、<code>mobilesegv2…v13.py</code>、<code>backbones/repvit.py</code> 与 <code>repvit_v2…v8.py</code></td><td>约 20 个文件</td><td>论文消融的实验档案 —— 即使当前没用上也要留（已定）</td><td><b>保留</b>；在本文档标注「哪些版本进了最终表格」</td></tr>
+              <tr><td><code>paddleseg/models/*.py</code> 中与实验无关的上游模型（ann / danet / gcnet / ocrnet / pspnet / unet* / setr / segmenter / maskformer / pointrend / knet / pidnet / stfpm …）</td><td>约 55 个文件</td><td>两条实验线不 import</td><td>连同 <code>__init__.py</code> 一并裁剪</td></tr>
+              <tr><td><code>paddleseg/models/backbones/</code> 中未使用骨干（hrnet / vision_transformer / swin_transformer / mix_transformer / uhrnet / top_transformer / strideformer / vit_adapter / mscan / seaformer / pidnet …）</td><td>约 15 个文件</td><td>仅 RepViT / STDC / ResNet-VD / MobileNet / EfficientFormer 系被用到</td><td>按依赖闭包裁剪</td></tr>
+              <tr><td><code>configs/</code> 中约 300 个非实验配置</td><td>0.5 MB / 300+</td><td>cityscapes / ade20k / voc 等上游配置</td><td>收敛为 <code>configs/paper/</code> 一组</td></tr>
+              <tr><td><code>paddleseg/datasets/</code> 中 15 个未用数据集类</td><td>15 个文件</td><td>仅 PPHumanSeg14K 被用</td><td>按需裁剪</td></tr>
+              <tr><td rowspan="4"><b>L2</b><br>产物与数据<br><span class="tag danger">需确认</span></td>
+                  <td><code>output/</code>（24 个运行目录的检查点）</td><td><b>5.02 GB</b></td><td>可重训复现；但含论文表格的原始权证</td><td>移出仓库 / 只留 <code>best_model</code></td></tr>
+              <tr><td><code>log/</code>（含 168 MB 的 <code>workerlog.0</code>）</td><td>162.2 MB</td><td>训练日志，调试用</td><td>清空 / 只留最近一次</td></tr>
+              <tr><td><code>data/portrait14k</code>、<code>data/portrait16k</code></td><td><b>1.86 GB</b></td><td><b>复现必需</b>，但不宜进 git</td><td>保留在磁盘，加 <code>.gitignore</code></td></tr>
+              <tr><td><code>.git/</code>（完整历史）</td><td>481.6 MB</td><td>回滚保险</td><td><b>保留</b>（见 3.3）</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3 class="sub-heading" id="method">3.3 处置方式</h3>
+        <div class="decision-grid">
+          <article>
+            <span class="decision-index">方式 A</span>
+            <h3>物理删除 + git 兜底</h3>
+            <p>用 <code>git rm -r</code> 删除 L0/L1 文件。因为仓库带着完整上游历史（<code>.git</code> 481 MB），任何删除都能通过 <code>git checkout</code> 找回，风险最低。</p>
+          </article>
+          <article>
+            <span class="decision-index">方式 B</span>
+            <h3>归档而非删除</h3>
+            <p>把 L0/L1 移到仓库外的 <code>PaddleSeg-archive\</code>，或仓库内 <code>_archive\</code>（加 <code>.gitignore</code>）。适合还想留着探索代码的场景。</p>
+          </article>
+          <article>
+            <span class="decision-index">方式 C</span>
+            <h3>只出白名单，不动仓库</h3>
+            <p>保留原仓库，另建一份「精简拷贝」或只给打包/过滤脚本。适合需要随时对照原仓库的场景。</p>
+          </article>
+        </div>
+        <div class="callout warning" style="margin-top:20px">
+          <div>
+            <span class="callout-label">注意</span>
+            <h3>大文件不要用删除，用忽略</h3>
+          </div>
+          <p><code>data/</code>（1.86 GB）与 <code>output/</code>（5.02 GB）是复现实验的必需品，删了得重新下载/重训。建议写进 <code>.gitignore</code> 移出版本控制，而不是从磁盘删除。反之 <code>log/</code> 与两个 <code>*_results.json</code> 可以直接清。</p>
+        </div>
+      </section>
+      <!-- ==================== 4 risk ==================== -->
+      <section class="doc-section" id="risk">
+        <div class="section-heading">
+          <h2>4 风险与验收</h2>
+          <p>裁剪最容易踩的坑，以及如何在动刀后证明「实验线还在」。</p>
+        </div>
+        <h3 class="sub-heading">4.1 风险点</h3>
+        <div class="table-wrap compact">
+          <table>
+            <thead><tr><th>风险</th><th>说明</th><th>对策</th></tr></thead>
+            <tbody>
+              <tr><td>注册入口断链</td><td>PaddleSeg 用 <code>@manager.MODELS/BACKBONES.add_component</code> 注册；删文件不改 <code>__init__.py</code> 会在 import 阶段就报错</td><td>裁剪与 <code>models/__init__.py</code>、<code>backbones/__init__.py</code> 同步改，改完立刻跑 import 冒烟</td></tr>
+              <tr><td><b>「Ours」不可复现</b></td><td><code>repvit_v8_7.yml</code> 整代配置缺失，<code>MobileSegV3</code> 未注册 —— 论文主结果的配置与入口都不在仓库里</td><td>从 <code>结果.md</code> 还原 yml，并把 <code>mobilesegv3</code> 加进 <code>models/__init__.py</code>（D1）</td></tr>
+              <tr><td>隐式依赖遗漏</td><td>某些模型共享 <code>layers/</code>、<code>transforms/</code>、<code>losses/</code> 里的组件，静态搜索容易漏</td><td>用 A1–A3 的真实训练命令验证，而非只做静态分析</td></tr>
+              <tr><td>配置与模型不匹配</td><td>基线配置目前分散在上游 <code>configs/*</code> 里，<code>num_classes</code>/数据集路径需手改，易错</td><td>收敛出统一的 <code>configs/paper/</code>，一个表格行一个 yaml</td></tr>
+              <tr><td>论文表格无法回溯</td><td>TABLE VI 的 7 行来自多轮实验拼合，仓库里没有一张「行 ↔ run ↔ config」对照表</td><td>按 D2 出一张显式对照表，作为本文档附录固化</td></tr>
+              <tr><td>误删探索代码</td><td><code>mambaVision</code> / <code>segdeformer</code> / <code>offseg</code> 虽未进论文，但可能是后续工作素材</td><td>默认「归档不删除」（D4）</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3 class="sub-heading">4.2 验收清单（裁剪后必须全绿）</h3>
+        <ul class="acceptance-list">
+          <li><span class="a-id">A1</span><div><b>导入冒烟：</b><code>python -c "import paddleseg"</code> 无报错 —— 证明注册入口未被改断。</div></li>
+          <li><span class="a-id">A2</span><div><b>对比实验可跑：</b>取 TABLE III 任一行（如 <code>portrait_pp_humansegv2_lite.yml</code>）跑 <code>tools/val.py</code>，能加载并输出 mIoU —— 证明数据管线 + 模型 + 工具链完好。</div></li>
+          <li><span class="a-id">A3</span><div><b>消融实验可跑：</b>取 TABLE VI 两个端点（<code>repvit_v8.yml</code> 与还原后的 <code>repvit_v8_7.yml</code>）各跑 <code>tools/train.py --iters 100</code>，loss 正常下降 —— 证明消融阶梯未被破坏。</div></li>
+          <li><span class="a-id">A4</span><div><b>指标可复算：</b><code>tools/model_info.py --config &lt;cfg&gt;</code> 能吐出 Params/FLOPs，与论文表格同量级 —— 证明评测工具链可用。</div></li>
+          <li><span class="a-id">A5</span><div><b>体积达标：</b>裁剪后仓库文件数从 55,868 降到 &lt; 1,500（不含 <code>data/</code> 与 <code>output/</code>）。</div></li>
+        </ul>
+      </section>
+      <!-- ==================== 5 decisions ==================== -->
+      <section class="doc-section" id="decisions">
+        <div class="section-heading">
+          <h2>5 决策状态：已定 / 待定</h2>
+          <p>三轮访谈的结论已收敛为「定 1 – 定 7」，全部落进正文；5.2 已无待定项。仍不动项目代码，直到你说「执行」。</p>
+        </div>
+        <h3 class="sub-heading" style="margin-top:0">5.1 已定（已写入正文）</h3>
+        <div class="decision-grid">
+          <article>
+            <span class="decision-index">定 1</span>
+            <h3>消融血统全部保留</h3>
+            <p><code>mobileseg.py</code>、<code>mobilesegv2…v13.py</code>、<code>repvit.py</code>、<code>repvit_v2…v8.py</code> 无论是否进表，一律先保存、不删除，并在文档中标注进表版本。</p>
+            <span class="rec">→ 落点：§2.6 的 Q1 结论条；§3.2 L1 已改为「保留」。</span>
+          </article>
+          <article>
+            <span class="decision-index">定 2</span>
+            <h3>表格 ↔ 版本 ↔ run 对照表已交付</h3>
+            <p>TABLE III 与 TABLE VI 的每一行都落到具体模型版本与 config，并标注证据强度（已核实 / 弱 / 未定位）。</p>
+            <span class="rec">→ 落点：§2.6。6 行中 4 行已核实，5 行待补。</span>
+          </article>
+          <article>
+            <span class="decision-index">定 3</span>
+            <h3>docs/ 保留，本文档留在 docs/</h3>
+            <p>不删除 <code>docs/</code> 下的任何内容；本文档位置不变（<code>docs/experiment-slimming-plan.html</code>）。</p>
+            <span class="rec">→ 落点：§3.2 L0 的 docs 行已改为「保留」，并拆分出可删的工程杂项。</span>
+          </article>
+          <article>
+            <span class="decision-index">定 4</span>
+            <h3>为 TABLE III 补论文口径配置</h3>
+            <p>为对比实验六个模型各补一份指向 PP-HumanSeg14K（<code>num_classes: 2</code>）的配置，收敛到 <code>configs/paper/</code>，一个表格行一个 yaml。</p>
+            <span class="rec">→ 落点：§3.1 保留集目录树 + §4.1「配置与模型不匹配」对策。</span>
+          </article>
+          <article>
+            <span class="decision-index">定 5</span>
+            <h3>TABLE VI 基线行口径确认</h3>
+            <p><b>RepViT-Baseline</b> = <code>结果.md</code> 的 Repvit version7 → <code>repvit_v7.yml</code>（0.8848 / 12.71 ms），即「纯 RepViT 骨干的最佳一档」，不是 MobileSeg 基线。</p>
+            <span class="rec">→ 落点：§2.6 对照表，两表 13 行全部已核实。</span>
+          </article>
+          <article>
+            <span class="decision-index">定 6</span>
+            <h3>注册位置：与现状一致</h3>
+            <p>补 <code>MobileSegV3</code> 的 import 放 <code>paddleseg/models/__init__.py</code>（模型都在这），<code>backbones/__init__.py</code> 保持只放骨干。</p>
+            <span class="rec">→ 落点：§2.7 第 2 步。</span>
+          </article>
+          <article>
+            <span class="decision-index">定 7</span>
+            <h3>本轮不做任何删除</h3>
+            <p>所有目录与文件先全部保留——包括 <code>contrib/</code>、<code>output/</code>、<code>log/</code>、无关的上游模型与配置。§3.2 降级为备选清单。</p>
+            <span class="rec">→ 落点：§3.2 说明条。</span>
+          </article>
+        </div>
+        <h3 class="sub-heading">5.2 待定项</h3>
+        <div class="callout ok">
+          <div>
+            <span class="callout-label">frontier 已空</span>
+            <h3>没有剩余待定项</h3>
+          </div>
+          <p>三轮访谈的每一个分支都已落定（定 1 – 定 7），论文两表 13 行全部可追溯到 config 与实测值。计划到此闭合——<b>等你一句「开始动手」，我再按 §2.7 与 §4.2 执行（补配置、注册模型、跑冒烟），执行前不动任何文件。</b></p>
+        </div>
+      </section>
+      <!-- ==================== 6 executed ==================== -->
+      <section class="doc-section" id="executed">
+        <div class="section-heading">
+          <h2>6 执行记录（2026-10-12）</h2>
+          <p>按 L0 / L1 / L2 三级执行完毕。所有被移除项<b>移出</b>到 <code>Desktop\PaddleSeg-removed-20261012\</code>，结构与原仓库一致，移回即还原。</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>层级</th><th>动作</th><th>结果</th></tr></thead>
+            <tbody>
+              <tr><td rowspan="3"><b>L0</b><br>顶层目录</td>
+                  <td>移出 <code>contrib/</code>、<code>EISeg/</code>、<code>Matting/</code>、<code>test_tipc/</code>、<code>.github/</code>、<code>.idea/</code>、<code>paddleseg.egg-info/</code></td>
+                  <td>7 个目录，约 570 MB / 2,340 个文件</td></tr>
+              <tr><td>移出 <code>2407.08083v2.pdf</code>、<code>batch_prediction_results.json</code>、<code>prediction_results.json</code></td><td>3 个文件，约 15 MB</td></tr>
+              <tr><td><b>保留</b> <code>deploy/</code>（你指定）与 <code>docs/</code>（含本文档）</td><td>—</td></tr>
+              <tr><td rowspan="2"><b>L1</b><br>仓库内部</td>
+                  <td>移出与实验无关的上游模型文件</td><td>53 个（ann / danet / ocrnet / pspnet 之外的 unet* / setr / segmenter / maskformer / topformer / upernet* …）</td></tr>
+              <tr><td>移出与实验无关的上游骨干文件</td><td>17 个（vision_transformer / swin_transformer / mix_transformer / vit_adapter / hrformer / uhrnet / lite_hrnet …）；<code>transformer_utils.py</code> 因被 <code>efficientformerv2.py</code> 与 <code>mscan.py</code> 引用而<b>保留</b></td></tr>
+              <tr><td rowspan="3"><b>L2</b><br>产物与数据</td>
+                  <td><code>output/</code>：移出全部 <code>iter_*</code> 检查点与 <code>vdlrecords*</code> 日志</td><td>149 项，释放 <b>4.42 GB</b>；每个运行的 <code>best_model/</code> 与 <code>inference_model/</code> 保留</td></tr>
+              <tr><td><code>log/</code>：移出 <code>default.*.log</code>（93）、<code>envlog.0</code>、<code>default.gpu.log</code>、<code>backup_env.0.json</code></td><td>95 个文件 / 1.3 MB；<b>保留 <code>workerlog.0</code></b>（160.9 MB，是 2026-01 那轮全部运行的唯一在库证据）</td></tr>
+              <tr><td><code>data/</code>（1.86 GB 数据集）与 <code>.git/</code>（481 MB）</td><td><b>保留</b>（复现必需 / 回滚保险）</td></tr>
+              <tr><td rowspan="2"><b>L1b</b><br>配置</td>
+                  <td>移出 <code>configs/</code> 下 64 个模型目录（约 300 个上游配置，含 <code>deeplabv3p</code> / <code>bisenet</code> / <code>pp_liteseg</code> / <code>pspnet</code> 等城市街景·ADE20K 口径配置）与 <code>configs/fcn/</code> 的 7 个上游配置</td>
+                  <td><b>保留</b> <code>quick_start/</code>（25）、<code>_base_/</code>（16）、<code>efficientformerv2/</code>（3）、<code>fcn/fcn_hrnetw18_pphumanseg14k.yml</code>；配置文件 <b>314 → 47</b></td></tr>
+              <tr><td>说明：<code>_base_/</code> 必须保留 —— 保留下来的 <code>efficientformerv2_s2_…yml</code> 以 <code>_base_/ade20k.yml</code> 为父配置</td><td>—</td></tr>
+              <tr><td rowspan="2"><b>还原</b><br>论文口径配置</td>
+                  <td>逐字还原 <b>19</b> 个缺失配置到 <code>configs/quick_start/</code> —— 15 个取自 <code>消融实验.md</code>（<code>repvit_v8_7 / _8 / _9 / _10 / _11 / _12 / _15</code>、<code>repvit_final</code>、<code>pphumanseg</code>、<code>deeplabv3p_resnet18_os8</code> + <code>_16k</code>、<code>bisenet</code>、<code>pp_liteseg_stdc2</code> + <code>_16k</code>、<code>pspnet</code>），4 个取自 <code>结果.md</code>（<code>repvit_v8_1 / _2 / _5 / _6</code>）</td>
+                  <td><code>configs/quick_start/</code>：25 → <b>44</b> 个</td></tr>
+              <tr><td>新建 <code>configs/paper/</code>：TABLE III 六行各一个 yaml（取自 quick_start 的权威配置）+ README 全表对照</td><td>7 个文件（6 yml + README）</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout ok">
+          <div>
+            <span class="callout-label">验证</span>
+            <h3>裁剪后实测通过</h3>
+          </div>
+          <p>用仓库自带环境（conda <code>PaddleSeg</code>，paddle 3.0.0）实测：<code>import paddleseg</code> 正常；<code>configs/quick_start/</code> 25 个配置中 <b>23 个可构建模型并前向成功</b>。另 2 个的失败原因均为<b>改动前就存在</b>的问题，与本次裁剪无关：<code>mambaVision.yml</code> 的 <code>MambaVision</code> 注册在 <code>manager.MODELS</code> 而非 <code>BACKBONES</code>；<code>repvit_v8_18.yml</code> 引用的 <code>MobileSegV11</code> 从未注册。已按定 6 在 <code>models/__init__.py</code> 补上 <code>MobileSegV3</code> 的注册（Ours 现可被加载）。</p>
+        </div>
+        <div class="table-wrap compact">
+          <table>
+            <thead><tr><th>指标</th><th>执行前</th><th>执行后</th></tr></thead>
+            <tbody>
+              <tr><td>仓库体积</td><td>约 8.0 GB</td><td><b>3.16 GB</b>（含 <code>.git</code> 481 MB、<code>data/</code> 1.86 GB）</td></tr>
+              <tr><td>备份目录体积</td><td>—</td><td>5.00 GB（确认无误后可自行删除以释放空间）</td></tr>
+              <tr><td><code>paddleseg/models/*.py</code></td><td>75 个</td><td>21 个</td></tr>
+              <tr><td><code>paddleseg/models/backbones/*.py</code></td><td>37 个</td><td>20 个</td></tr>
+              <tr><td><code>configs/</code> 下配置文件</td><td>314 个</td><td>47 个</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">§2.7 第 1 步与定 4 均已执行。备份目录 <code>PaddleSeg-removed-20261012\</code> 已按你的确认<b>删除</b>（路径已核验），5.0 GB 空间已释放——自此刻起裁剪不可逆回滚。</p>
+        <div class="callout warning">
+          <div>
+            <span class="callout-label">还原后的已知缺口</span>
+            <h3>8 个配置「已还原但暂不可运行」</h3>
+          </div>
+          <p>50 个配置中 <b>45 个类可解析</b>（<code>MobileSegV4 / V5 / V11</code> 已按其文件补进 <code>models/__init__.py</code>，<code>repvit_v8_9 / _10 / _18</code> 因此可加载）。余下 5 个：<code>MobileSegV6</code>（<code>repvit_v8_11.yml</code>）、<code>MobileSegV7</code>（<code>_12</code>）、<code>MobileSegV9</code>（<code>_15</code>、<code>_16</code>）三类在仓库里<b>没有对应文件</b>；骨干 <code>RepViTBackboneFinal</code>（<code>repvit_final.yml</code>）缺失，<code>MambaVision</code>（<code>mambaVision.yml</code>）则注册在 <code>manager.MODELS</code> 而非 <code>BACKBONES</code>。这些类的源码都在 <code>消融实验.md</code> 各小节的代码块里，按它补建文件再注册即可让这些行运行。</p>
+          <p><b>2 个配置无法逐字还原</b>（两份记录里都没有其 yml 内容）：<code>repvit_v8_16.yml</code>（<code>消融实验.md</code> 中的 yml 块为空）与 <code>bisenet_16k.yml</code>（<code>BisnetV2_16k</code> 小节只有 train 命令、没有 yml 段）。二者均可按同系列模板重建，但那属于「重建」而非「还原」，需你点头。</p>
+        </div>
+      </section>
+      <!-- ==================== 7 eval extension ==================== -->
+      <section class="doc-section" id="eval-ext">
+        <div class="section-heading">
+          <h2>7 评测扩展</h2>
+          <p>两处补强：PaddleSeg 的验证阶段新增恢复类指标；iOS 端在测 FPS 的同时采集内存 / 热 / 能耗。</p>
+        </div>
+        <h3 class="sub-heading">7.1 PaddleSeg：PSNR / SSIM / 时序一致性</h3>
+        <p class="note">现在跑 <code>tools/val.py</code>（以及 <code>train.py --do_eval</code>）时，除了 mIoU / Acc / Kappa / Dice，会<b>在同一行</b>追加 PSNR 与 SSIM，并在下一行给出时序一致性——不用另跑脚本。</p>
+        <div class="table-wrap compact">
+          <table>
+            <thead><tr><th>文件</th><th>改动</th></tr></thead>
+            <tbody>
+              <tr><td><code>paddleseg/utils/restoration_metrics.py</code> <span class="tag">新增</span></td><td><code>psnr()</code> / <code>ssim()</code>（高斯窗 11×11、σ=1.5、标准常数）与 <code>RSAccumulator</code>（跨样本累计 PSNR/SSIM + 相邻帧时序一致性）</td></tr>
+              <tr><td><code>paddleseg/core/val.py</code></td><td><code>evaluate()</code> 新增 <code>calc_restoration=True</code>；逐样本累计并在 <code>[EVAL]</code> 行输出</td></tr>
+              <tr><td><code>paddleseg/core/train.py</code>、<code>tools/train.py</code></td><td><code>train()</code> 透传该开关；<code>--do_eval</code> 期间同样输出</td></tr>
+              <tr><td><code>tools/val.py</code></td><td>新增 <code>--calc_restoration</code>（<code>str2bool</code>，默认 <code>True</code>，可传 <code>False</code> 关闭）</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">实测样例（<code>repvit_v8_20.yml</code> + 其 <code>best_model</code>，2431 张验证图）：</p>
+        <pre><code>[EVAL] #Images: 2431 mIoU: 0.8893 Acc: 0.9537 Kappa: 0.8814 Dice: 0.9407 PSNR: 20.6647 SSIM: 0.9321
+[EVAL] TemporalConsistency: 0.9686 (Flicker: 0.0314, ChangedPixelRatio: 0.0649, ConsecutivePairs: 2430)</code></pre>
+        <p class="note">口径：三项指标都算在<b>二值化前景掩膜</b>（<code>pred &gt; 0</code> 对 <code>label &gt; 0</code>）上——这正是下游恢复管线真正消费的东西。<code>PSNR</code> 对完全一致的掩膜封顶 100 dB。<code>TemporalConsistency = 1 − Flicker</code>，其中 <code>Flicker</code> 是「相邻帧之间 GT 未变化像素上的预测平均绝对变化量」；<code>ChangedPixelRatio</code> 给出这些帧对里 GT 实际变化的像素比例作为参照。<b>时序一致性只在验证列表按视频帧顺序排列时才有意义</b>——PaddleSeg 以 <code>shuffle=False, drop_last=False</code> 求值，因此数据集顺序即 <code>val.txt</code> 顺序，满足前提。多标签模式下会自动跳过这三项。</p>
+        <h4 class="sub-heading" style="margin:26px 0 10px;font-size:14.5px;color:var(--muted)">全部可实测运行（20 个，2026-10-12 实测）</h4>
+        <div class="table-wrap compact">
+          <table>
+            <thead><tr><th>运行（config）</th><th>#样本</th><th>mIoU</th><th>PSNR</th><th>SSIM</th><th>时序一致性</th><th>Flicker</th><th>对应论文行</th></tr></thead>
+            <tbody>
+              <tr><td><code>final</code></td><td>2779</td><td>0.9620</td><td>25.85</td><td>0.9682</td><td>0.9881</td><td>0.0119</td><td>—（部署口径，16K）</td></tr>
+              <tr><td><code>repvit_v8_14</code></td><td>2779</td><td>0.9072</td><td>22.38</td><td>0.9424</td><td>0.9745</td><td>0.0255</td><td>—（16K 对照）</td></tr>
+              <tr><td><code>repvit_v8_17</code></td><td>2431</td><td>0.8992</td><td>22.88</td><td>0.9366</td><td>0.9720</td><td>0.0280</td><td>—（未进表）</td></tr>
+              <tr><td><code>efficentv2</code></td><td>2431</td><td>0.8932</td><td>22.63</td><td>0.9335</td><td>0.9721</td><td>0.0279</td><td><b>TABLE III</b> EfficientFormerV2-Seg</td></tr>
+              <tr><td><code>repvit_v8_20</code></td><td>2431</td><td>0.8893</td><td>20.66</td><td>0.9321</td><td>0.9686</td><td>0.0314</td><td><b>TABLE VI</b> +GAM</td></tr>
+              <tr><td><code>repvit_v8_18</code></td><td>2431</td><td>0.8909</td><td>22.38</td><td>0.9329</td><td>0.9695</td><td>0.0305</td><td><b>TABLE VI</b> +GAM+PPM(1236)+ASPP+FM</td></tr>
+              <tr><td><code>repvit_v7</code></td><td>2431</td><td>0.8848</td><td>20.48</td><td>0.9310</td><td>0.9689</td><td>0.0311</td><td><b>TABLE VI</b> RepViT-Baseline</td></tr>
+              <tr><td><code>efficentv2_16k</code></td><td>2779</td><td>0.8842</td><td>21.28</td><td>0.9309</td><td>0.9679</td><td>0.0321</td><td>—（16K 对照）</td></tr>
+              <tr><td><code>repvit_v5</code></td><td>2431</td><td>0.8821</td><td>17.92</td><td>0.9283</td><td>0.9678</td><td>0.0322</td><td>—（骨干线）</td></tr>
+              <tr><td><code>repvit_v8_19</code></td><td>2431</td><td>0.8813</td><td>22.33</td><td>0.9278</td><td>0.9684</td><td>0.0316</td><td>—（未进表）</td></tr>
+              <tr><td><code>repvit_v3</code></td><td>2431</td><td>0.8804</td><td>17.43</td><td>0.9267</td><td>0.9667</td><td>0.0333</td><td>—（骨干线）</td></tr>
+              <tr><td><code>repvit_v8</code></td><td>2431</td><td>0.8688</td><td>18.23</td><td>0.9229</td><td>0.9678</td><td>0.0322</td><td>—（消融基线）</td></tr>
+              <tr><td><code>repvit_v4</code></td><td>2431</td><td>0.8687</td><td>18.70</td><td>0.9212</td><td>0.9667</td><td>0.0333</td><td>—（骨干线）</td></tr>
+              <tr><td><code>portrait_pp_humansegv2_lite</code></td><td>2431</td><td>0.8653</td><td>17.06</td><td>0.9217</td><td>0.9662</td><td>0.0338</td><td><b>TABLE III</b> PP-HumanSegV2-Lite</td></tr>
+              <tr><td><code>repvit_v6</code></td><td>2431</td><td>0.8633</td><td>19.18</td><td>0.9190</td><td>0.9657</td><td>0.0343</td><td>—（骨干线）</td></tr>
+              <tr><td><code>repvit_segnext</code></td><td>2431</td><td>0.8587</td><td>21.11</td><td>0.9196</td><td>0.9622</td><td>0.0378</td><td>—（探索）</td></tr>
+              <tr><td><code>repvit</code></td><td>2431</td><td>0.8035</td><td>13.70</td><td>0.8861</td><td>0.9584</td><td>0.0416</td><td>—（骨干线 V1）</td></tr>
+              <tr><td><code>repvit_v2</code></td><td>2431</td><td>0.8013</td><td>15.16</td><td>0.8887</td><td>0.9603</td><td>0.0397</td><td>—（骨干线）</td></tr>
+              <tr><td><code>segdeformer</code></td><td>2431</td><td>0.6273</td><td>8.55</td><td>0.7743</td><td>0.9314</td><td>0.0686</td><td>—（探索，未训起来）</td></tr>
+              <tr><td><code>offseg</code></td><td>2431</td><td>0.4019</td><td>5.85</td><td>0.5632</td><td>0.9226</td><td>0.0774</td><td>—（探索，未训起来）</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">按 mIoU 降序。注意口径：<code>final</code> / <code>repvit_v8_14</code> / <code>efficentv2_16k</code> 跑的是 <b>Portrait16K</b>（2779 张），其余为 <b>PP-HumanSeg14K</b>（2431 张），两者不可直接横向比较。<code>repvit_v8_1.yml</code> 未能求值：它引用了本机不存在的 <code>pretrained/repvitv1/best_model.pdparams</code>（<code>pretrained/</code> 目录不在仓库里）。</p>
+        <div class="callout warning">
+          <div>
+            <span class="callout-label">运行须知</span>
+            <h3>必须让仓库的 <code>paddleseg</code> 优先于 site-packages</h3>
+          </div>
+          <p>环境里同时存在一份 site-packages 的 <code>paddleseg 2.8.0</code>（上游版，不含你的自定义模型）。直接 <code>python tools/val.py</code> 时 <code>sys.path[0]</code> 是 <code>tools/</code>，会 import 到那份旧代码并报 <code>MobileSegV13 was not found</code>。用仓库版本跑（与既有训练命令一致）：<br><code>set PYTHONPATH=C:\Users\16782\Desktop\PaddleSeg</code>（PowerShell：<code>$env:PYTHONPATH="C:\Users\16782\Desktop\PaddleSeg"</code>）</p>
+        </div>
+        <h3 class="sub-heading">7.2 digiboard-ios：FPS 之外的内存 / 热 / 能耗</h3>
+        <p class="note">原先只统计 fps / 帧耗时 / 分割耗时。现在同一轮 0.5 s 轮询里一并采样内存、热状态、电量与 CPU，既进 <code>[STAT]</code> 日志，也上顶部状态条。</p>
+        <div class="table-wrap compact">
+          <table>
+            <thead><tr><th>文件</th><th>改动</th></tr></thead>
+            <tbody>
+              <tr><td><code>DigiBoard/App/DeviceStats.swift</code> <span class="tag">新增</span></td><td><code>DeviceStats</code> 采样器：常驻内存（<code>mach_task_basic_info</code>）、设备总内存、可用内存（<code>os_proc_available_memory</code>，不可用返回 −1）、进程累计 CPU 时间与占用、<code>ProcessInfo.thermalState</code>、电量与耗电速率</td></tr>
+              <tr><td><code>DigiBoard/App/BoardViewModel.swift</code></td><td>新增 6 个 <code>@Published</code> 资源指标；在 <code>startStatsPolling()</code> 每轮采样；<code>[STAT]</code> 行追加「内存 / 可用 / CPU / 热 / 电量 / 耗电」</td></tr>
+              <tr><td><code>DigiBoard/App/ContentView.swift</code></td><td>顶部状态条新增「内存 / CPU / 热 / 电量」胶囊；因指标变多改为横向可滚动，避免窄屏溢出</td></tr>
+              <tr><td><code>DigiBoard/App/RestorationMetrics.swift</code> <span class="tag">新增</span></td><td><b>恢复质量</b>指标：对「恢复后的帧」与「干净参考帧」算 PSNR / SSIM（亮度通道，11×11 高斯窗 σ=1.5）+ 逐像素平均绝对差。纯计算，不依赖 Metal，任意两个 <code>CGImage</code> 都能跑</td></tr>
+              <tr><td><code>DigiBoard/Render/FrameCapture.swift</code></td><td>抽出 <code>makeImage(from: MTLTexture) -&gt; CGImage?</code>（原 PNG 写出改为复用它），作为「纹理 → CGImage」的桥，供上面的指标回读恢复输出</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note"><b>energy 用三个可测代理量表示</b>（iOS 没有公开的单进程能耗 API）：<code>thermalState</code>（热压力档位）、<code>cpuPercent</code>（能耗主要来源）、<code>batteryDrainPercentPerHour</code>（整机电量下降速率，需累计约 3 分钟以上才有意义，模拟器上不可用）。要出论文级的能耗数据，仍建议同时用 Instruments 的 Energy Log 交叉验证。</p>
+        <p class="note"><b>恢复质量指标（§7.1 提到的那一组）落在这里。</b>调用方式：拿恢复输出纹理与参考帧纹理各回读一张 <code>CGImage</code>（<code>FrameCapture.makeImage(from:)</code>），再 <code>RestorationMetrics.evaluate(reference:restored:)</code>，得到 PSNR / SSIM / 平均绝对差。两图尺寸不同时自动把 <code>restored</code> 缩放对齐到参考帧。<br><b>唯一待定的产品决策</b>：参考帧怎么来。论文里是「presenter 进场前先拍一张干净白板」，所以需要一个「采集参考帧」的动作（按钮 / 手势 / 启动后的第 N 帧自动记下）。这一步涉及交互，我没有替你定，接上任意一个入口即可跑通。</p>
+        <div class="callout danger">
+          <div>
+            <span class="callout-label">未编译验证</span>
+            <h3>Swift 改动需在 Mac 上过一遍 build</h3>
+          </div>
+          <p>本次改动在 Windows 上编写，<b>没有 Xcode 可用，因此未经编译</b>。已做的静态核对：括号配平、<code>String(format:)</code> 的占位符与实参数量一致、新文件位于 Xcode 16 的 <code>PBXFileSystemSynchronizedRootGroup</code> 覆盖范围内（会被自动纳入 target，无需改 <code>pbxproj</code>）。首次 build 时若 <code>os_proc_available_memory</code> 报未声明，删掉 <code>availableMemoryMB()</code> 或改用其余指标即可。</p>
+        </div>
+        <h3 class="sub-heading" id="video-eval">7.3 恢复质量评估（视频侧）</h3>
+        <p class="note">上一节是端上「恢复输出 ↔ 参考帧」的即时比较；批量出表用脚本：<code>dashboard-ios/scripts/eval_restoration_video.py</code>。它把<b>一张无遮挡的干净参考图</b>与<b>处理后的视频</b>逐帧比对，输出 PSNR / SSIM / MAE 与帧间稳定性。</p>
+        <pre><code># 最简：干净参考图 + 处理后的视频
+python eval_restoration_video.py --reference ref.png --restored restored.mp4
+
+# 再给原始（未处理）视频：自动推导逐帧遮挡区域，额外输出「仅遮挡区」口径
+python eval_restoration_video.py --reference ref.png --restored restored.mp4 --input raw.mp4</code></pre>
+        <div class="table-wrap compact">
+          <table>
+            <thead><tr><th>输出</th><th>含义</th></tr></thead>
+            <tbody>
+              <tr><td><code>psnr_full</code> / <code>ssim_full</code> / <code>mae_full</code></td><td>全帧（或 <code>--roi</code>）口径</td></tr>
+              <tr><td><code>psnr_occ</code> / <code>ssim_occ</code> / <code>mae_occ</code> / <code>occ_ratio</code></td><td><b>仅遮挡区</b>口径——只有这块是恢复算法真正产出的</td></tr>
+              <tr><td><code>mad_prev_full</code></td><td>与上一帧的平均绝对差（相机固定，即闪烁量级）</td></tr>
+              <tr><td><code>flicker_matched</code></td><td>只在「本来就已恢复正确」的像素上统计的帧间抖动——这才是闪烁</td></tr>
+              <tr><td>CSV + 汇总</td><td>逐帧明细落盘，控制台给 mean / median / p5 / p95</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout warning">
+          <div>
+            <span class="callout-label">口径提醒</span>
+            <h3>两个必须处理的前提</h3>
+          </div>
+          <p><b>① 只在遮挡区上算。</b>未遮挡像素在恢复输出里本来就是照抄，占比常在 90% 以上，只报全帧会被这批「白送」的像素抬高到没有区分度——所以脚本同时给全帧与仅遮挡区两个口径。<br><b>② 参考只在「内容未变」的窗口内有效。</b>一旦画面被写过或擦过，开场前那张干净参考就过期了，此时指标下降是<b>内容变了</b>而不是算法错。建议把评估限制在内容未变的片段，或分段各自取参考。</p>
+        </div>
+        <p class="note">口径与 iOS 侧 <code>RestorationMetrics.swift</code> 完全一致（亮度通道、11×11 高斯窗 σ=1.5、C1/C2 标准常数、data_range=255），三处（PaddleSeg / iOS / 视频脚本）的 SSIM 可以直接放在同一张表里。已用合成数据自测：参考图 + 60 帧恢复视频 + 带遮挡的原始视频，注入「恢复残留」窗口后 PSNR 全帧由 42.9 掉到 37.4、窗口结束回到 43.0，遮挡区占比 13.6% —— 定位与量级都符合预期。</p>
+      </section>
+      <section class="doc-section" id="changelog">
+        <div class="section-heading">
+          <h2>变更记录</h2>
+        </div>
+        <div class="table-wrap compact">
+          <table>
+            <thead><tr><th>版本</th><th>日期</th><th>变更</th></tr></thead>
+            <tbody>
+              <tr><td>0.1</td><td>2026-10-12</td><td>初稿：论文对比/消融实验解析、代码定位、三级精简清单、验收标准与 5 项待审决策。</td></tr>
+              <tr><td>0.2</td><td>2026-10-12</td><td>据 <code>结果.md</code> 与 <code>log/workerlog.0</code> 校正：确认 Ours = <code>repvit_v8_7</code>（<code>MobileSegV3</code> + RepViT V8）；改写 §2.2 为「四步演进线」；新增 §2.5 证据来源；新增「Ours 不可复现」风险与 D1/D2 决策。</td></tr>
+              <tr><td>0.3</td><td>2026-10-12</td><td>据回复定稿：消融血统全保留并标注进表版本；新增 TABLE III / TABLE VI 的「行 ↔ 版本 ↔ run」对照表（§2.6，TABLE III 4/6 行、TABLE VI 3/7 行已核实）；<code>docs/</code> 与本文档位置不变；<code>configs/paper/</code> 列入计划；§5 改为「已定 / 待定」。</td></tr>
+              <tr><td>0.4</td><td>2026-10-12</td><td>新增 §2.7「Ours 恢复清单」：配置落 <code>configs/quick_start/repvit_v8_7.yml</code>、骨干注册无需改动、权重已丢失须重训；标注注册语句位置的分歧（<code>models/__init__.py</code> vs <code>backbones/__init__.py</code>）。</td></tr>
+              <tr><td>0.5</td><td>2026-10-12</td><td>据 <code>消融实验.md</code> 补齐出处：TABLE VI 七行全部落位（<code>repvit_v8_7/9/15/16/18/20</code>），TABLE III 六行亦有 config 归属（含 <code>deeplabv3p_resnet18_os8</code>、<code>bisenet</code>、<code>pp_liteseg_stdc2</code>）；§2.6 重写并追加「未进论文旁支」清单；§2.7 第 1 步扩为「还原整代配置」；仅剩 TABLE VI 基线行待确认。</td></tr>
+              <tr><td>0.6</td><td>2026-10-12</td><td><b>定稿。</b>基线行确认为 <code>repvit_v7.yml</code>（定 5）；注册位置定 <code>models/__init__.py</code>（定 6）；本轮不做任何删除，§3.2 降为备选清单（定 7）。§5 待定项清空，计划闭合。</td></tr>
+              <tr><td>0.7</td><td>2026-10-12</td><td><b>已执行 L0/L1/L2。</b>被移除内容全部移入 <code>Desktop\PaddleSeg-removed-20261012\</code>（可原样移回）。仓库 8.0 GB → 3.16 GB；模型文件 75→21、骨干 37→20；注册 <code>MobileSegV3</code>。新增 §6 执行记录；§3.2 由备选清单转为已执行说明。</td></tr>
+              <tr><td>0.8</td><td>2026-10-12</td><td>追加 <b>L1b 配置裁剪</b>：<code>configs/</code> 下 64 个模型目录（约 300 个上游配置）与 <code>configs/fcn/</code> 的 7 个上游配置移出；保留 <code>quick_start/</code>、<code>_base_/</code>、<code>efficientformerv2/</code> 与 <code>fcn_hrnetw18_pphumanseg14k.yml</code>。配置文件 314 → 47。复验：<code>import paddleseg</code> 正常，quick_start 23/25 可构建（2 个为既有问题）。</td></tr>
+              <tr><td>0.9</td><td>2026-10-12</td><td><b>收尾。</b>① 从 <code>消融实验.md</code> 还原 15 个配置（<code>quick_start</code> 25→40）；② 新建 <code>configs/paper/</code>（TABLE III 六行 + README 全表对照）；③ 备份目录 <code>PaddleSeg-removed-20261012\</code> 已删除、5.0 GB 释放。复验：46 个配置中 38 个类可解析，8 个缺类已逐条记录在 <code>configs/paper/README.md</code>。</td></tr>
+              <tr><td>1.0</td><td>2026-10-12</td><td>补齐还原：改为同时扫描 <code>结果.md</code> 与 <code>消融实验.md</code>，又从 <code>结果.md</code> 还原 <code>repvit_v8_1 / _2 / _5 / _6</code> 4 个配置。<code>configs/quick_start/</code> 25 → <b>44</b>。全库仅剩 <code>repvit_v8_16.yml</code> 与 <code>bisenet_16k.yml</code> 无法逐字还原（记录里缺 yml）。复验：50 个配置中 42 个类可解析。</td></tr>
+              <tr><td>1.1</td><td>2026-10-12</td><td><b>评测扩展。</b>PaddleSeg：新增 <code>restoration_metrics.py</code>，<code>evaluate()</code> 在 mIoU 同行输出 PSNR/SSIM 并追加时序一致性；<code>tools/val.py</code> / <code>tools/train.py</code> 增 <code>--calc_restoration</code>。已用 <code>repvit_v8_20</code> 权重重跑实测（mIoU 0.8893 复现论文 +GAM 行，PSNR 20.6647 / SSIM 0.9321 / 时序一致性 0.9686）。iOS：新增 <code>DeviceStats.swift</code>，<code>BoardViewModel</code> 与 <code>ContentView</code> 接入内存/热/电量/CPU（Swift 侧未编译）。新增 §7。</td></tr>
+              <tr><td>1.2</td><td>2026-10-12</td><td><b>PSNR / SSIM 回填表格。</b>对 <code>output/</code> 下全部可用权重跑了一遍带新指标的验证（19 个运行；<code>repvit_v8_1</code> 因缺 <code>pretrained/</code> 未能求值）。§1.1 TABLE III 与 §1.2 TABLE VI 新增 PSNR / SSIM 两列（无权重行标「—」），§7.1 追加「全部可实测运行」19 行明细表。所有 mIoU 与 <code>结果.md</code> 记录逐位一致。</td></tr>
+              <tr><td>1.3</td><td>2026-10-12</td><td><b>注册解封 + iOS 恢复质量指标。</b>① 把 <code>MobileSegV4 / V5 / V11</code> 注册进 <code>models/__init__.py</code>，<code>repvit_v8_18</code> 得以求值（mIoU 0.8909 复现论文 89.09，PSNR 22.38 / SSIM 0.9329）——已补进 §1.2 与 §7.1（明细表增至 20 个运行），可解析配置 42/50 → <b>45/50</b>。② iOS 新增 <code>RestorationMetrics.swift</code>（对干净参考帧算恢复质量 PSNR/SSIM），并从 <code>FrameCapture</code> 抽出 <code>makeImage(from:)</code> 作为纹理→CGImage 的桥。</td></tr>
+              <tr><td>1.4</td><td>2026-10-12</td><td><b>视频侧恢复质量评估。</b>新增 <code>dashboard-ios/scripts/eval_restoration_video.py</code>：给定「无遮挡参考图 + 处理后的视频（可选原始视频/掩膜）」逐帧输出 PSNR / SSIM / MAE 的全帧与<b>仅遮挡区</b>两个口径、帧间 MAD 与闪烁指标，落盘 CSV。已用合成数据自测通过。§7.3 记录用法、输出与两个口径前提。</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="document-control">
+          <span>PaddleSeg 实验代码精简方案 · v1.4（已执行）· 2026-10-12</span>
+          <span>依据论文：DigiBoard (IEEE TMC) · 目标仓库：<code>Desktop\PaddleSeg</code></span>
+        </div>
+      </section>
+    </main>
+  </div>
+  <button class="back-to-top" id="back-to-top" type="button" aria-label="回到顶部">↑</button>
+  <script>
+    document.getElementById('print-document').addEventListener('click', function () { window.print(); });
+    var toTop = document.getElementById('back-to-top');
+    window.addEventListener('scroll', function () {
+      toTop.classList.toggle('visible', window.scrollY > 420);
+    });
+    toTop.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    var links = Array.prototype.slice.call(document.querySelectorAll('#toc a'));
+    var targets = links.map(function (a) { return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        links.forEach(function (a) {
+          a.classList.toggle('active', a.getAttribute('href') === '#' + entry.target.id);
+        });
+      });
+    }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+    targets.forEach(function (t) { observer.observe(t); });
+  </script>
+</body>
+</html>

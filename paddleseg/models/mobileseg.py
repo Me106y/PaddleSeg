@@ -294,3 +294,60 @@ class SegHead(nn.Layer):
         x = self.conv(x)
         x = self.conv_out(x)
         return x
+
+if __name__ == '__main__':
+    import paddle
+
+    # 1. 虚拟主干
+    class DummyBackbone(nn.Layer):
+        feat_channels = [8, 16, 32, 64, 128]  # [x2,x4,x8,x16,x32]
+
+        def forward(self, x):
+            B, _, H, W = x.shape
+            return [
+                paddle.randn([B,  8, H//2,  W//2]),   # 0
+                paddle.randn([B, 16, H//4,  W//4]),   # 1
+                paddle.randn([B, 32, H//8,  W//8]),   # 2
+                paddle.randn([B, 64, H//16, W//16]),  # 3
+                paddle.randn([B, 128, H//32, W//32])  # 4
+            ]
+
+    # 2. 构造模型
+    backbone = DummyBackbone()
+    model = MobileSeg(
+        num_classes=21,
+        backbone=backbone,
+        backbone_indices=[1, 2, 3],  # x4, x8, x16
+        pretrained=None
+    )
+    model.eval()
+
+    # 3. 前向并打印
+    dummy = paddle.randn([1, 3, 224, 224])
+    with paddle.no_grad():
+        # 3.1 backbone
+        bb_out = backbone(dummy)
+        print('\nBackbone outputs:')
+        for i, f in enumerate(bb_out):
+            print(f'  stage[{i}]: {list(f.shape)}')
+
+        # 3.2 MobileSeg 内部
+        def debug_forward(self, x):
+            x_hw = x.shape[2:]
+            feats = [backbone(x)[i] for i in self.backbone_indices]
+            print('\nSelected feats:')
+            for i, f in enumerate(feats):
+                print(f'  [{i}]: {list(f.shape)}')
+
+            head_out = self.ppseg_head(feats)
+            print('\nAfter MobileSegHead:')
+            for i, f in enumerate(head_out):
+                print(f'  arm[{i}]: {list(f.shape)}')
+
+            logit = self.seg_heads[0](head_out[0])
+            logit = F.interpolate(logit, x_hw, mode='bilinear', align_corners=False)
+            return [logit]
+
+        model.forward = debug_forward.__get__(model, MobileSeg)
+        out = model(dummy)
+        print('\nFinal logit shape:', out[0].shape)

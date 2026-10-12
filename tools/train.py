@@ -27,6 +27,16 @@ from paddleseg.utils.logger import setup_logger
 from paddleseg.core import train
 
 
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if str(v).lower() in ('yes', 'true', 't', '1'):
+        return True
+    if str(v).lower() in ('no', 'false', 'f', '0'):
+        return False
+    raise argparse.ArgumentTypeError('Boolean value expected.')
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Model training')
 
@@ -57,6 +67,14 @@ def parse_args():
     parser.add_argument('--use_ema',
                         help='Whether to ema the model in training.',
                         action='store_true')
+    parser.add_argument(
+        '--calc_restoration',
+        type=str2bool,
+        default=True,
+        help='Whether to additionally report PSNR / SSIM of the binarised '
+        'foreground mask and the temporal consistency across consecutive '
+        'samples, alongside mIoU / Acc / Kappa / Dice during --do_eval. '
+        'Default: True.')
 
     # Runntime params
     parser.add_argument('--resume_model',
@@ -242,6 +260,7 @@ def main(args):
           to_static_training=cfg.to_static_training,
           logger=logger,
           print_mem_info=print_mem_info,
+          calc_restoration=args.calc_restoration,
           shuffle=shuffle,
           uniform_output_enabled=uniform_output_enabled,
           cli_args=None if not uniform_output_enabled else args)

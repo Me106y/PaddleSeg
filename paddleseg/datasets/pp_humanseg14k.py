@@ -22,7 +22,7 @@ from paddleseg.transforms import Compose
 @manager.DATASETS.add_component
 class PPHumanSeg14K(Dataset):
     """
-    This is the PP-HumanSeg14K Dataset.
+    This is the portrait14k Dataset.
 
     This dataset was introduced in the work:
     Chu, Lutao, et al. "PP-HumanSeg: Connectivity-Aware Portrait Segmentation with a Large-Scale Teleconferencing Video Dataset." Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision. 2022.

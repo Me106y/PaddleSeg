@@ -1,0 +1,76 @@
+batch_size: 2  #1 GPU
+iters: 50000
+save_interval: 1000
+
+train_dataset:
+  type: Dataset
+  mode: train
+  dataset_root: data/portrait14k
+  train_path: data/portrait14k/train.txt
+  num_classes: 2
+  transforms:
+    - type: Resize
+      target_size: [256, 144]
+    - type: ResizeStepScaling
+      scale_step_size: 0
+    - type: RandomRotation
+    - type: RandomPaddingCrop
+      crop_size: [256, 144]
+    - type: RandomHorizontalFlip
+    - type: RandomDistort
+    - type: RandomBlur
+      prob: 0.3
+    - type: Normalize
+
+val_dataset:
+  type: Dataset
+  mode: val
+  dataset_root: data/portrait14k
+  val_path: data/portrait14k/val.txt
+  num_classes: 2
+  transforms:
+    - type: Resize
+      target_size: [256, 144]
+    - type: Normalize
+
+export:
+  transforms:
+    - type: Resize
+      target_size: [256, 144]
+    - type: Normalize
+
+optimizer:
+  type: AdamW
+  weight_decay: 0.01
+
+lr_scheduler:
+  type: PolynomialDecay
+  learning_rate: 0.001
+  end_lr: 0
+  power: 0.9
+
+loss:
+  types:
+    - type: MixedLoss
+      losses:
+        - type: CrossEntropyLoss
+        - type: LovaszSoftmaxLoss
+      coef: [1, 0.1]
+  coef: [1, 1, 1]
+
+model:
+  type: MobileSeg
+  num_classes: 2
+  backbone:
+    type: RepViTBackboneV5
+    arch: m1.0                      # 可选 m0.9/m1.1/m1.5/m2.3
+    pretrained: null                # 可先训练 ImageNet 再填路径
+  # RepViT 4 级特征通道：[56, 112, 224, 448]
+  backbone_indices: [0, 1, 2]       # 用前 3 级
+  cm_bin_sizes: [1, 2, 4]
+  cm_out_ch: 128
+  arm_out_chs: [32, 64, 128]
+  seg_head_inter_chs: [16, 32, 32]
+  use_last_fuse: True
+  # 无预训练分割权重，先 null
+  pretrained: null

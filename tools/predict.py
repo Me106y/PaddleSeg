@@ -21,6 +21,7 @@ from paddleseg.core import predict
 from paddleseg.cvlibs import Config, SegBuilder, manager
 from paddleseg.transforms import Compose
 from paddleseg.utils import get_image_list, get_sys_env, logger, utils
+import time
 
 
 def parse_args():
@@ -150,6 +151,7 @@ def main(args):
     image_list, image_dir = get_image_list(args.image_path)
     logger.info('The number of images: {}'.format(len(image_list)))
 
+    start_time = time.time()
     predict(
         model,
         model_path=args.model_path,
@@ -158,7 +160,13 @@ def main(args):
         image_dir=image_dir,
         save_dir=args.save_dir,
         **test_config)
+    total_time = time.time() - start_time
 
+    # 计算并打印平均推理时间
+    total_samples = len(image_list)
+    avg_time = total_time / total_samples if total_samples > 0 else 0
+    logger.info(f"Average inference time: {avg_time:.4f} seconds/sample")
+    logger.info(f"Total samples evaluated: {total_samples}")
 
 if __name__ == '__main__':
     args = parse_args()

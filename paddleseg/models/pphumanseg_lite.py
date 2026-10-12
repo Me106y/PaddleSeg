@@ -237,3 +237,38 @@ class InvertedResidual(nn.Layer):
         output = paddle.transpose(x=output, perm=[0, 2, 1, 3, 4])
         output = paddle.reshape(x=output, shape=[0, 2 * self.in_channels, h, w])
         return output
+
+if __name__ == '__main__':
+    # test_pphumanseg_lite.py
+    import paddle
+    import numpy as np
+    # 如需 GPU 推理，把下行取消注释
+    # paddle.set_device('gpu')
+
+    # 1. 构造模型
+    model = PPHumanSegLite(num_classes=2)  # 2 类：前景 / 背景
+    model.eval()  # 推理模式（关闭 dropout 等）
+
+    # 2. 构建假数据
+    dummy = paddle.randn([1, 3, 224, 224])  # (N,C,H,W)
+
+
+    # 3. 使用 hook 机制逐层打印输出 shape
+    def build_hook(layer_name):
+        def _hook(layer, inp, out):
+            if isinstance(out, (list, tuple)):
+                shapes = [tuple(o.shape) for o in out]
+            else:
+                shapes = tuple(out.shape)
+            print(f"{layer_name}: {shapes}")
+
+        return _hook
+
+
+    for name, layer in model.named_sublayers():
+        layer.register_forward_post_hook(build_hook(name))
+
+    # 4. 前向推理
+    with paddle.no_grad():
+        outputs = model(dummy)
+    print("\n模型最终输出：", [tuple(o.shape) for o in outputs])

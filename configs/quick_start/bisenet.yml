@@ -1,0 +1,53 @@
+batch_size: 4
+iters: 50000
+
+train_dataset:
+  type: Dataset
+  mode: train
+  dataset_root: data/portrait14k/
+  train_path: data/portrait14k/train.txt
+  num_classes: 2
+  transforms:
+    - type: Resize
+      target_size: [256, 144]
+    - type: ResizeStepScaling
+      scale_step_size: 0
+    - type: RandomRotation
+    - type: RandomPaddingCrop
+      crop_size: [256, 144]
+    - type: RandomHorizontalFlip
+    - type: RandomDistort
+    - type: RandomBlur
+      prob: 0.3
+    - type: Normalize
+
+val_dataset:
+  type: Dataset
+  mode: val
+  dataset_root: data/portrait14k
+  val_path: data/portrait14k/val.txt
+  num_classes: 2
+  transforms:
+    - type: Resize
+      target_size: [256, 144]
+    - type: Normalize
+
+optimizer:
+  type: SGD
+  momentum: 0.9
+  weight_decay: 4.0e-5
+
+lr_scheduler:
+  type: PolynomialDecay
+  learning_rate: 0.01
+  end_lr: 0
+  power: 0.9
+
+loss:
+  types:
+    - type: CrossEntropyLoss
+  coef: [1, 1, 1, 1, 1]
+
+model:
+  type: BiSeNetV2
+  pretrained: Null

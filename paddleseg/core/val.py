@@ -20,6 +20,7 @@ import paddle
 import paddle.nn.functional as F
 
 from paddleseg.utils import metrics, TimeAverager, calculate_eta, logger, progbar
+from paddleseg.utils import restoration_metrics
 from paddleseg.core import infer
 
 np.set_printoptions(suppress=True)
@@ -39,7 +40,8 @@ def evaluate(model,
              num_workers=0,
              print_detail=True,
              auc_roc=False,
-             use_multilabel=False):
+             use_multilabel=False,
+             calc_restoration=True):
     """
     Launch evalution.
 
@@ -61,6 +63,9 @@ def evaluate(model,
         print_detail (bool, optional): Whether to print detailed information about the evaluation process. Default: True.
         auc_roc(bool, optional): whether add auc_roc metric
         use_multilabel (bool, optional): Whether to enable multilabel mode. Default: False.
+        calc_restoration (bool, optional): Whether to additionally report PSNR / SSIM of the
+            binarised foreground mask, plus the temporal consistency across consecutive
+            samples. Default: True.
 
     Returns:
         float: The mIoU of validation datasets.
@@ -88,6 +93,8 @@ def evaluate(model,
     label_area_all = paddle.zeros([1], dtype='int64')
     logits_all = None
     label_all = None
+    rs_acc = restoration_metrics.RSAccumulator(
+    ) if (calc_restoration and not use_multilabel) else None
 
     if print_detail:
         logger.info("Start evaluating (total_samples: {}, total_iters: {})...".
@@ -171,6 +178,9 @@ def evaluate(model,
                 ignore_index=eval_dataset.ignore_index,
                 use_multilabel=use_multilabel)
 
+            if rs_acc is not None:
+                rs_acc.update(pred, label)
+
             # Gather from all ranks
             if nranks > 1:
                 intersect_area_list = []
@@ -235,10 +245,21 @@ def evaluate(model,
     if print_detail:
         infor = "[EVAL] #Images: {} mIoU: {:.4f} Acc: {:.4f} Kappa: {:.4f} Dice: {:.4f}".format(
             len(eval_dataset), miou, acc, kappa, mdice)
+        if rs_acc is not None:
+            rs = rs_acc.summary()
+            infor += " PSNR: {:.4f} SSIM: {:.4f}".format(rs['psnr'],
+                                                         rs['ssim'])
         infor = infor + auc_infor if auc_roc else infor
         logger.info(infor)
         logger.info("[EVAL] Class IoU: \n" + str(np.round(class_iou, 4)))
         logger.info("[EVAL] Class Precision: \n" + str(
             np.round(class_precision, 4)))
         logger.info("[EVAL] Class Recall: \n" + str(np.round(class_recall, 4)))
+        if rs_acc is not None:
+            rs = rs_acc.summary()
+            logger.info(
+                "[EVAL] TemporalConsistency: {:.4f} (Flicker: {:.4f}, "
+                "ChangedPixelRatio: {:.4f}, ConsecutivePairs: {})".format(
+                    rs['temporal_consistency'], rs['flicker'],
+                    rs['changed_pixel_ratio'], rs['consecutive_pairs']))
     return miou, acc, class_iou, class_precision, kappa

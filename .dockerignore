@@ -1,0 +1,40 @@
+# 版本控制与本地环境（镜像里不需要）
+.git
+.gitignore
+.idea
+.vscode
+__pycache__
+**/__pycache__
+*.py[cod]
+
+# 数据与训练产物：体积大且随机器不同，一律用 -v 挂载，不进镜像
+data/
+output/
+log/
+pretrained/
+
+# 与训练无关的上游内容（已从仓库裁剪，若仍存在也不进镜像）
+contrib/
+test_tipc/
+EISeg/
+Matting/
+deploy/
+docs/
+
+# 权重 / 导出产物
+*.pdparams
+*.pdopt
+*.pdstates
+*.pdiparams
+*.pdmodel
+*.pdiparams.info
+*.onnx
+*.mlpackage
+*.tar
+*.tar.gz
+*.zip
+
+# 其它杂项
+*.log
+.DS_Store
+*.swp
