@@ -1045,6 +1045,7 @@ docker run --gpus all -it --rm --shm-size=8g \
               <tr><td>本地对应分支</td><td><code>codex/docker-training-env</code>（跟踪 <code>github/main</code>）</td></tr>
               <tr><td>推送内容</td><td>1958 个文件变更（含裁剪掉的 1853 个上游文件）；不含数据集、权重与日志</td></tr>
               <tr><td>权重归档（v1.8 起）</td><td><code>weights/</code>——4 个消融 run 的 checkpoint 随仓库入库（约 30 MB）；<code>.gitignore</code> 对 <code>weights/*/model.pdparams</code> 与 <code>.pdstates</code> 开例外；数据集与 <code>output/</code> 仍不入库（见 §6.2）</td></tr>
+              <tr><td>v1.8 推送（2026-10-13）</td><td>提交 <code>52540a8a</code>「回迁 4 个消融权重并核验结构…」已推送 <code>main</code>：14 个文件变更，含 <code>weights/</code> 4 个 checkpoint、<code>mobilesegv9.py</code>、<code>repvit_v8_16.yml</code> 与文档 v1.8</td></tr>
               <tr><td>配套 iOS 仓库</td><td><code>https://github.com/Me106y/dashboard-ios</code>（public，分支 <code>main</code>）——§7.2 / §7.3 的端上改动（<code>DeviceStats</code>、<code>RestorationMetrics</code>、<code>eval_restoration_video.py</code>）已推送到此，提交 <code>5fe8b68</code></td></tr>
             </tbody>
           </table>
