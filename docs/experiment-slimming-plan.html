@@ -306,18 +306,18 @@
       </nav>
       <div class="sidebar-note">
         <strong>文档定位</strong>
-        <p>内部评审稿（v0.1，待审）。仅做规划，<b>不改动 PaddleSeg 代码</b>。锁定 IEEE TMC 论文《DigiBoard》的<b>对比实验（TABLE III）</b>与<b>消融实验（TABLE VI）</b>两条实验线，逐项定位其代码位置并给出「最小可复现」精简方案。</p>
+        <p>内部文档（v1.8，已执行）。锁定 IEEE TMC 论文《DigiBoard》的<b>对比实验（TABLE III）</b>与<b>消融实验（TABLE VI）</b>两条实验线：逐项定位代码位置、执行仓库精简，并持续记录权重回迁与复现进展（§6）。</p>
       </div>
     </aside>
     <main id="main-content">
       <section class="hero doc-section" id="overview">
         <div class="hero-copy">
-          <p class="eyebrow">方案评审稿 · Plan for Review</p>
+          <p class="eyebrow">方案与执行记录 · Plan &amp; Log</p>
           <h1>PaddleSeg 实验代码精简方案</h1>
-          <p class="hero-lead">把论文《DigiBoard: Occlusion-Free Whiteboard Digitization at the Edge》(IEEE TMC) 的<b>对比实验</b>与<b>消融实验</b>两类实验，一次性映射到 PaddleSeg 的配置、模型、骨干、数据集与运行产物上；再据此把当前 5.6 万个文件、约 8 GB 的仓库收敛为一条「最小可复现」实验线。本稿只出方案、不动代码。<b>已核实「Ours」= <code>repvit_v8_7</code>（<code>MobileSegV3</code> + <code>RepViTBackboneV8</code>），而该配置当前已不在工作区</b>——见 §2.2。</p>
+          <p class="hero-lead">把论文《DigiBoard: Occlusion-Free Whiteboard Digitization at the Edge》(IEEE TMC) 的<b>对比实验</b>与<b>消融实验</b>两类实验，一次性映射到 PaddleSeg 的配置、模型、骨干、数据集与运行产物上；再据此把当前 5.6 万个文件、约 8 GB 的仓库收敛为一条「最小可复现」实验线。仓库已完成精简，进入权重回迁与复现阶段。<b>已核实「Ours」= <code>repvit_v8_7</code>（<code>MobileSegV2</code> + <code>RepViTBackboneV8</code>，权重结构核验）——配置、注册与权重均已就位</b>，见 §2.2 与 §6.2。</p>
           <div class="meta-row" aria-label="文档元数据">
-            <span>版本 1.7（已执行）</span>
-            <span>生成日期：2026-10-12</span>
+            <span>版本 1.8（已执行）</span>
+            <span>更新日期：2026-10-13</span>
             <span>依据：TMC-DigiBoard（13 页）</span>
             <span>佐证：<code>Desktop\结果.md</code>（实验日志）</span>
             <span>目标仓库：<code>Desktop\PaddleSeg</code></span>
@@ -362,7 +362,7 @@
           </table>
         </div>
         <p class="tbl-cap">TABLE III · PP-HumanSeg14K 基准上的性能对比（复刻自论文原文）。Fig. 7 为同一批模型在 Portrait16K 上的定性可视化对比。</p>
-        <p class="note"><b>PSNR / SSIM 为新增列</b>（论文原表没有），由仓库的 <code>tools/val.py</code> 在本机实测，算在<b>二值化前景掩膜</b>上（见 §7.1）。<b>「—」= 该行没有留存权重</b>（DeepLabV3p / PP-LiteSeg / Ours 的 checkpoint 已不在 <code>output/</code>），需重训才能补。另：PP-HumanSegV2-Lite 本次实测 mIoU 为 <b>0.8653</b>，与论文原表的 0.8631 略有差异（非同一轮训练）。</p>
+        <p class="note"><b>PSNR / SSIM 为新增列</b>（论文原表没有），由仓库的 <code>tools/val.py</code> 在本机实测，算在<b>二值化前景掩膜</b>上（见 §7.1）。<b>「—」= 该行暂无本地 checkpoint</b>：<b>Ours 的权重已于 2026-10-13 找回并归档（<code>weights/repvit_v8_7/</code>，PSNR / SSIM 待补算）</b>；DeepLabV3p / PP-LiteSeg 的 checkpoint 仍未寻回，需重训或继续找回。另：PP-HumanSegV2-Lite 本次实测 mIoU 为 <b>0.8653</b>，与论文原表的 0.8631 略有差异（非同一轮训练）。</p>
         <h3 class="sub-heading" id="ablation">1.2 消融实验（TABLE VI + Fig. 10）</h3>
         <p class="note">在 PP-HumanSeg14K 上，从 RepViT 基线出发，按 <b>GAM → ASPP → PPM → MSF</b> 的次序逐步加模块，观察 mIoU 与延迟的联合变化。论文结论：完整 EASPP（GAM + PPM(124) + ASPP + MSF）达到 90.96% mIoU，且延迟 10.64 ms 优于基线之外的多数中间体。Fig. 10 另给出<b>掩码形态学膨胀</b>的定性消融（修复边界残留）。</p>
         <div class="table-wrap">
@@ -382,7 +382,7 @@
           </table>
         </div>
         <p class="tbl-cap">TABLE VI · 分割模型消融（复刻自论文原文）。GAM = Global Attention Module；PPM(1236)/PPM(124) = 金字塔池化尺度；FM = 常规 PPM 特征融合；MSF = 提出的多尺度特征融合。</p>
-        <p class="note"><b>PSNR / SSIM 为新增列</b>（论文原表没有），由仓库的 <code>tools/val.py</code> 在本机实测，算在<b>二值化前景掩膜</b>上（见 §7.1）。「—」= 该行没有留存权重。本次已把 <code>MobileSegV4 / V5 / V11</code> 注册进 <code>models/__init__.py</code>，因此 <code>repvit_v8_18</code>（本表第 5 行）成功测出：mIoU 0.8909 与论文的 89.09 一致，PSNR 22.38 / SSIM 0.9329。</p>
+        <p class="note"><b>PSNR / SSIM 为新增列</b>（论文原表没有），由仓库的 <code>tools/val.py</code> 在本机实测，算在<b>二值化前景掩膜</b>上（见 §7.1）。「—」= 该行暂无本地 checkpoint。<b>2026-10-13 起了变化：<code>+GAM+ASPP</code>（<code>_15</code>）、<code>+GAM+PPM(1236)+FM</code>（<code>_16</code>）、<code>+GAM+PPM(124)+ASPP+FM</code>（<code>_9</code>）与末行 Ours（<code>_7</code>）的权重已找回并归档至 <code>weights/</code></b>——<code>_7</code> / <code>_16</code> 可直接复算；<code>_15</code> 因 yml 声明 <code>type: MobileSegV9</code> 而权重为 ASPP-only 结构，需改指 <code>MobileSegV4</code>；<code>_9</code> 的原类代码仍缺（详见 §6.2）。此前已把 <code>MobileSegV4 / V5 / V11</code> 注册进 <code>models/__init__.py</code>，因此 <code>repvit_v8_18</code>（本表第 5 行）成功测出：mIoU 0.8909 与论文的 89.09 一致，PSNR 22.38 / SSIM 0.9329。</p>
         <h3 class="sub-heading" id="out-of-scope">1.3 明确排除在本次范围之外的实验</h3>
         <p class="note">避免范围蔓延——以下实验<b>不属于</b>本次「PaddleSeg 训练侧」精简范围，如需单独规划请另立文档：</p>
         <div class="table-wrap compact">
@@ -449,21 +449,21 @@
               </tr>
               <tr>
                 <td><b>Ours（本文方法）</b></td>
-                <td><code>mobilesegv3.py</code> → <code>MobileSegV3</code>（「改进 EPPM」：PPM 分支逐元素相加后再与 ASPP 分支 concat）；骨干 <code>backbones/repvit_v8.py</code> → <code>RepViTBackboneV8</code></td>
-                <td><code>configs/quick_start/repvit_v8_7.yml</code> <span class="tag danger">工作区已缺失</span>（可从 <code>结果.md</code> 完整还原）</td>
+                <td><code>mobilesegv2.py</code> → <code>MobileSegV2</code>（PPM[1,2,4] 三分支与 ASPP 三分支<b>全部拼接</b> + 全局上下文注意力；<b>2026-10-13 权重结构核验，见 §6.2</b>）；骨干 <code>backbones/repvit_v8.py</code> → <code>RepViTBackboneV8</code></td>
+                <td><code>configs/quick_start/repvit_v8_7.yml</code> <span class="tag ok">已还原</span>；权重 <code>weights/repvit_v8_7/</code></td>
                 <td><span class="tag">自定义</span></td>
               </tr>
             </tbody>
           </table>
         </div>
-        <p class="tbl-cap">已核实：<code>repvit_v8_7.yml</code> 的验证结果为 mIoU <b>0.9096</b> / Acc <b>0.9621</b> / Kappa <b>0.9044</b> / Dice <b>0.9522</b>，Params 1.97M、FLOPs 0.102G、延迟 10.64 ms，与 TABLE III 的 Ours 行逐位吻合。注意 <code>final.yml</code>（MobileNetV3 骨干）是后来的部署/导出配置，不是论文口径。</p>
+        <p class="tbl-cap">已核实：<code>repvit_v8_7.yml</code> 的验证结果为 mIoU <b>0.9096</b> / Acc <b>0.9621</b> / Kappa <b>0.9044</b> / Dice <b>0.9522</b>，Params 1.97M、FLOPs 0.102G、延迟 10.64 ms，与 TABLE III 的 Ours 行逐位吻合。2026-10-13 权重找回后，其融合层形状 <code>(128, 768)</code>（=128×6）进一步核验模型结构 = <code>MobileSegV2</code>（§6.2）。注意 <code>final.yml</code>（MobileNetV3 骨干）是后来的部署/导出配置，不是论文口径。</p>
         <h3 class="sub-heading" id="map-ablation">2.2 消融实验（TABLE VI）代码地图</h3>
         <div class="callout ok">
           <div>
-            <span class="callout-label">已核实 Ours</span>
-            <h3><code>repvit_v8_7</code> = <code>MobileSegV3</code> + <code>RepViTBackboneV8</code></h3>
+            <span class="callout-label">已核实 Ours（含权重结构核验）</span>
+            <h3><code>repvit_v8_7</code> = <code>MobileSegV2</code> + <code>RepViTBackboneV8</code></h3>
           </div>
-          <p><code>结果.md</code>（2025-10-21）记录该次训练的验证结果：mIoU <b>0.9096</b> / Acc <b>0.9621</b> / Kappa <b>0.9044</b> / Dice <b>0.9522</b>，Params <b>1,970,060</b>、FLOPs <b>102,694,496</b>、延迟 <b>10.64 ms</b> —— 与论文 TABLE III 的 Ours 行逐位吻合。模型代码在位（<code>paddleseg/models/mobilesegv3.py</code>），但配置与注册都已不在工作区。</p>
+          <p><code>结果.md</code>（2025-10-21）记录该次训练的验证结果：mIoU <b>0.9096</b> / Acc <b>0.9621</b> / Kappa <b>0.9044</b> / Dice <b>0.9522</b>，Params <b>1,970,060</b>、FLOPs <b>102,694,496</b>、延迟 <b>10.64 ms</b> —— 与论文 TABLE III 的 Ours 行逐位吻合。<b>2026-10-13 权重找回后按结构定案</b>：<code>cm.fusion_conv</code> 输入 768 = 128×6（PPM 三支 + ASPP 三支全部拼接）+ <code>global_context</code>，即 <code>MobileSegV2</code> 的 <code>EnhancedMobileContextModule</code> 实现——<code>MobileSegV3</code> 是逐元素相加后拼接，fusion 应为 512，与权重不符；<code>消融实验.md</code> 记 <code>MobileSegV2</code> 正确，<code>结果.md</code> 的「V3」口径不成立（见 §6.2）。配置已还原、注册在位、权重已归档（<code>weights/repvit_v8_7/</code>）。</p>
         </div>
         <p class="note"><code>结果.md</code> 记录的是一条四步演进线（骨干固定 <code>RepViTBackboneV8</code>，除标注外均为无预训练协议）：</p>
         <div class="table-wrap">
@@ -473,24 +473,24 @@
             </thead>
             <tbody>
               <tr><td>步 1</td><td>基线：MobileSeg 直接换 RepViT V8</td><td><code>MobileSeg</code></td><td><code>repvit_v8.yml</code></td><td>0.8688</td></tr>
-              <tr><td>步 2</td><td>增强上下文模块：PPM[1,2,4] + ASPP(6,12,18) + 全局上下文注意力</td><td><code>MobileSegV2</code> · <code>EnhancedMobileContextModule</code></td><td><code>repvit_v8_5.yml</code> <span class="tag danger">已缺失</span></td><td>0.9021</td></tr>
-              <tr><td>步 3</td><td>同上 + 加预训练权重（旁支，论文未采用）</td><td><code>MobileSegV2</code></td><td><code>repvit_v8_6.yml</code> <span class="tag danger">已缺失</span></td><td>0.9542</td></tr>
-              <tr><td><b>步 4</b></td><td><b>改进 EPPM：PPM 先逐元素相加，再与 ASPP concat</b></td><td><code>MobileSegV3</code> · <code>EnhancedMobileContextModule</code></td><td><code>repvit_v8_7.yml</code> <span class="tag danger">已缺失</span></td><td><b>0.9096 = Ours</b></td></tr>
+              <tr><td>步 2</td><td>增强上下文模块：PPM[1,2,4] + ASPP(6,12,18) + 全局上下文注意力</td><td><code>MobileSegV2</code> · <code>EnhancedMobileContextModule</code></td><td><code>repvit_v8_5.yml</code> <span class="tag ok">已还原</span></td><td>0.9021</td></tr>
+              <tr><td>步 3</td><td>同上 + 加预训练权重（旁支，论文未采用）</td><td><code>MobileSegV2</code></td><td><code>repvit_v8_6.yml</code> <span class="tag ok">已还原</span></td><td>0.9542</td></tr>
+              <tr><td><b>步 4</b></td><td><b>同一增强上下文模块（最终口径）；<code>结果.md</code> 当时把它记作「V3 · 逐元素相加」——2026-10-13 由权重结构定案为 <code>MobileSegV2</code> 实现（见 §6.2）</b></td><td><code>MobileSegV2</code> · <code>EnhancedMobileContextModule</code></td><td><code>repvit_v8_7.yml</code> <span class="tag ok">已还原</span>；权重 <code>weights/repvit_v8_7/</code></td><td><b>0.9096 = Ours</b></td></tr>
             </tbody>
           </table>
         </div>
         <p class="tbl-cap">「Ours」的实验口径是<b>无预训练</b>的那一支（步 4）。步 3 因为加了预训练权重而数值更高（0.9542），但不属于论文的消融协议，不能与 TABLE VI 混用。</p>
-        <div class="callout danger">
+        <div class="callout ok">
           <div>
-            <span class="callout-label">复现风险</span>
-            <h3>当前工作区缺「Ours」</h3>
+            <span class="callout-label">已解除（2026-10-13）</span>
+            <h3>「Ours」三件齐备：配置 + 注册 + 权重</h3>
           </div>
-          <p><code>configs/quick_start/repvit_v8_1 … v8_7.yml</code> 整代配置都不在工作区（只剩 <code>output/repvit_v8_1</code> 的权重）；<code>MobileSegV3</code> 虽有文件，但<b>未在 <code>paddleseg/models/__init__.py</code> 注册</b>，因此按现状无法加载「Ours」。好消息：<code>结果.md</code> 完整保存了每一步的 yml 与模型代码，可逐字还原。</p>
+          <p>配置 <code>repvit_v8_7.yml</code> 已于 v1.0 从 <code>结果.md</code> 逐字还原；<code>MobileSegV2</code> 一直在 <code>models/__init__.py</code> 注册；权重（<code>model.pdparams</code> + <code>.pdstates</code>）2026-10-13 从服务器回迁并归档至 <code>weights/repvit_v8_7/</code>（结构核验：融合层 <code>(128,768)</code> = <code>MobileSegV2</code> 实现）。<code>tools/val.py</code> 一条命令即可复算 0.9096。</p>
         </div>
         <p class="note">消融主线现已完整定位（见 §2.6）：<code>消融实验.md</code> 里的 <code>repvit_v8_7 / v8_9 / v8_15 / v8_16 / v8_18 / v8_20</code> 恰好对应 TABLE VI 的七行。工作区现存的 <code>repvit_v8_14 / 17 / 18 / 19 / 20</code> 只是这条线的一个子集，其中若干（如 v8_19）并未进表。</p>
         <p class="note">骨干自身的迭代线（<code>repvit.yml</code>、<code>repvit_v2..v8.yml</code> → <code>RepViTBackbone V1–V8</code>）属选型探索，不直接对应 TABLE VI，但共用同一套配置骨架。</p>
         <h3 class="sub-heading" id="map-runs">2.3 运行产物 ↔ 配置对照（<code>output/</code>）</h3>
-        <p class="note">体量合计约 <b>5.0 GB</b>。<code>output/</code> 的目录名大多与 <code>configs/quick_start/</code> 同名，但<b>并非一一对应</b>：<code>output/repvit_v8_1</code> 已无同名配置（那一代配置整体缺失）；论文 Ours 的权证 <code>output/repvit_v8_7</code> 同样不在工作区。</p>
+        <p class="note">体量合计约 <b>5.0 GB</b>。<code>output/</code> 的目录名大多与 <code>configs/quick_start/</code> 同名，但<b>并非一一对应</b>：<code>output/repvit_v8_1</code> 已无同名配置（那一代配置整体缺失）；论文 Ours 的权证 <code>output/repvit_v8_7</code> 曾遗失、2026-10-13 从服务器回迁，归档于新目录 <code>weights/repvit_v8_7/</code>（见 §6.2）。</p>
         <div class="table-wrap compact">
           <table>
             <thead><tr><th>运行目录</th><th>模型</th><th>骨干</th><th>归属</th></tr></thead>
@@ -608,7 +608,7 @@
             <span class="callout-label">Q1 结论</span>
             <h3>最终表格用到的版本（其余保留为档案）</h3>
           </div>
-          <p><b>配置还原后可核实的模型类对应：</b>TABLE III 的 Ours 与 TABLE VI 末行 = <code>repvit_v8_7.yml</code>（<code>消融实验.md</code> 记 <code>MobileSegV2</code>，<code>结果.md</code> 记 <code>MobileSegV3</code>，见下）；<code>+GAM</code> = <code>V13</code>（<code>repvit_v8_20.yml</code>）；<code>+GAM+ASPP</code> = <code>V9</code>（<code>_15</code>）；<code>+GAM+PPM(1236)+FM</code> = <code>V9</code>（<code>_16</code>）；<code>+GAM+PPM(1236)+ASPP+FM</code> = <code>V11</code>（<code>_18</code>）；<code>+GAM+PPM(124)+ASPP+FM</code> = <code>V4</code>（<code>_9</code>）。对比侧 <code>DeepLabV3P / BiSeNetV2 / PPHumanSegLite / PPLiteSeg / EfficientFormerSeg</code>。<br><b>保留但不进表：</b><code>MobileSeg</code>、<code>repvit_torch.py</code>、<code>Segman_encoder*.py</code>、<code>resnet_ms3.py</code>，以及 <code>MambaVision / SegDeformer / OffSegTiny / SegNeXt / PSPNet</code> 等探索——按既定方针全部留存。</p>
+          <p><b>配置还原后可核实的模型类对应：</b>TABLE III 的 Ours 与 TABLE VI 末行 = <code>repvit_v8_7.yml</code>（<code>消融实验.md</code> 记 <code>MobileSegV2</code>，<code>结果.md</code> 记 <code>MobileSegV3</code>——<b>2026-10-13 由权重结构定案为 <code>MobileSegV2</code> 实现，见 §6.2</b>）；<code>+GAM</code> = <code>V13</code>（<code>repvit_v8_20.yml</code>）；<code>+GAM+ASPP</code> = <code>V9</code>（<code>_15</code>）；<code>+GAM+PPM(1236)+FM</code> = <code>V9</code>（<code>_16</code>）；<code>+GAM+PPM(1236)+ASPP+FM</code> = <code>V11</code>（<code>_18</code>）；<code>+GAM+PPM(124)+ASPP+FM</code> = <code>V4</code>（<code>_9</code>）。对比侧 <code>DeepLabV3P / BiSeNetV2 / PPHumanSegLite / PPLiteSeg / EfficientFormerSeg</code>。<br><b>保留但不进表：</b><code>MobileSeg</code>、<code>repvit_torch.py</code>、<code>Segman_encoder*.py</code>、<code>resnet_ms3.py</code>，以及 <code>MambaVision / SegDeformer / OffSegTiny / SegNeXt / PSPNet</code> 等探索——按既定方针全部留存。</p>
         </div>
         <p class="note"><b>两表全部落位。</b>TABLE VI 第 1 行 <b>RepViT-Baseline</b> 的口径经你确认 = <code>结果.md</code> 的 <b>Repvit version7</b>（搜 0.8848 可得）→ <code>repvit_v7.yml</code>，即「纯 RepViT 骨干取到的最佳一档」，而非 MobileSeg 基线。至此论文两张表 13 行全部可追溯到 config 与实测值。</p>
         <h3 class="sub-heading" id="restore">2.7 「Ours」恢复清单（实施级）</h3>
@@ -619,7 +619,7 @@
               <tr><td>1</td><td>还原整代实验配置 —— <code>消融实验.md</code> 里每小节的 yml 都可逐字复制。至少含 <code>repvit_v8_7 / v8_8 / v8_9 / v8_12 / v8_15 / v8_16 / v8_17 / v8_18 / v8_20</code>、<code>repvit_final</code>、<code>deeplabv3p_resnet18_os8</code>、<code>bisenet</code>、<code>pp_liteseg_stdc2</code>、<code>pspnet</code>、<code>pphumanseg</code> 及 16K 变体（这些现在都不在 <code>configs/quick_start/</code>）</td><td><code>configs/quick_start/</code></td><td><span class="tag ok">已定</span></td></tr>
               <tr><td>2</td><td>让 <code>MobileSegV3</code> 被导入 —— 装饰器 <code>@manager.MODELS.add_component</code> 已写在 <code>mobilesegv3.py:24</code>，只差一句 import</td><td><code>paddleseg/models/__init__.py</code>：在第 67 行 <code>MobileSegV13</code> 之后加 <code>from .mobilesegv3 import MobileSegV3</code></td><td><span class="tag ok">已定</span></td></tr>
               <tr><td>3</td><td>骨干注册 —— <code>backbones/__init__.py</code> 已有 <code>from .repvit_v8 import *</code>，<code>RepViTBackboneV8</code> 可直接用</td><td><code>paddleseg/models/backbones/__init__.py</code></td><td><span class="tag ok">无需改动</span></td></tr>
-              <tr><td>4</td><td>权重 —— <code>output/repvit_v8_7/</code> 连同 <code>best_model</code> 都已不在工作区</td><td>—</td><td><span class="tag danger">要复算 0.9096 必须重训</span></td></tr>
+              <tr><td>4</td><td>权重 —— <code>output/repvit_v8_7/</code> 曾遗失，2026-10-13 从服务器回迁（含 <code>model.pdstates</code>）</td><td><code>weights/repvit_v8_7/model.pdparams</code></td><td><span class="tag ok">已归档</span>（无需重训；结构核验见 §6.2）</td></tr>
             </tbody>
           </table>
         </div>
@@ -655,7 +655,8 @@
 ├─ tests/mask.py
 ├─ data/portrait14k/  data/portrait16k/   # 数据集（建议移出 git，见 3.3）
 ├─ output/                  # 运行产物（不入 git，见 3.3）
-└─ plan/experiment-slimming-plan.html     # 本文档</code></pre>
+├─ weights/                 # 论文权重归档（4 个 run，入库；.gitignore 有例外，见 §6.2）
+└─ docs/experiment-slimming-plan.html     # 本文档</code></pre>
         <h3 class="sub-heading" id="remove">3.2 分级删除清单</h3>
         <p class="note"><b>已于 2026-10-12 执行</b>（详见 §6）。执行方式为<b>移出而非硬删</b>：所有被移除的内容原样保存在仓库同级目录 <code>PaddleSeg-removed-20261012\</code>，随时可移回。<code>deploy/</code>、<code>docs/</code>、<code>data/</code>、<code>.git/</code> 与各运行目录的 <code>best_model/</code> 按计划保留。</p>
         <div class="table-wrap">
@@ -803,9 +804,11 @@
       <!-- ==================== 6 executed ==================== -->
       <section class="doc-section" id="executed">
         <div class="section-heading">
-          <h2>6 执行记录（2026-10-12）</h2>
-          <p>按 L0 / L1 / L2 三级执行完毕。所有被移除项<b>移出</b>到 <code>Desktop\PaddleSeg-removed-20261012\</code>，结构与原仓库一致，移回即还原。</p>
+          <h2>6 执行记录</h2>
+          <p>6.1 为三级裁剪与配置还原（2026-10-12）；6.2 为权重回迁与结构核验（2026-10-13）。</p>
         </div>
+        <h3 class="sub-heading">6.1 三级裁剪与配置还原（2026-10-12）</h3>
+        <p class="note">按 L0 / L1 / L2 三级执行完毕。所有被移除项<b>移出</b>到 <code>Desktop\PaddleSeg-removed-20261012\</code>，结构与原仓库一致，移回即还原。</p>
         <div class="table-wrap">
           <table>
             <thead><tr><th>层级</th><th>动作</th><th>结果</th></tr></thead>
@@ -859,7 +862,40 @@
             <h3>8 个配置「已还原但暂不可运行」</h3>
           </div>
           <p>50 个配置中 <b>45 个类可解析</b>（<code>MobileSegV4 / V5 / V11</code> 已按其文件补进 <code>models/__init__.py</code>，<code>repvit_v8_9 / _10 / _18</code> 因此可加载）。余下 5 个：<code>MobileSegV6</code>（<code>repvit_v8_11.yml</code>）、<code>MobileSegV7</code>（<code>_12</code>）、<code>MobileSegV9</code>（<code>_15</code>、<code>_16</code>）三类在仓库里<b>没有对应文件</b>；骨干 <code>RepViTBackboneFinal</code>（<code>repvit_final.yml</code>）缺失，<code>MambaVision</code>（<code>mambaVision.yml</code>）则注册在 <code>manager.MODELS</code> 而非 <code>BACKBONES</code>。这些类的源码都在 <code>消融实验.md</code> 各小节的代码块里，按它补建文件再注册即可让这些行运行。</p>
-          <p><b>2 个配置无法逐字还原</b>（两份记录里都没有其 yml 内容）：<code>repvit_v8_16.yml</code>（<code>消融实验.md</code> 中的 yml 块为空）与 <code>bisenet_16k.yml</code>（<code>BisnetV2_16k</code> 小节只有 train 命令、没有 yml 段）。二者均可按同系列模板重建，但那属于「重建」而非「还原」，需你点头。</p>
+          <p><b>2 个配置无法逐字还原</b>（两份记录里都没有其 yml 内容）：<code>repvit_v8_16.yml</code>（<code>消融实验.md</code> 中的 yml 块为空）与 <code>bisenet_16k.yml</code>（<code>BisnetV2_16k</code> 小节只有 train 命令、没有 yml 段）。二者均可按同系列模板重建，但那属于「重建」而非「还原」，需你点头。<b>2026-10-13 更新：<code>repvit_v8_16.yml</code> 已从服务器回迁到原件，消融配置至此 100% 就位（见 6.2）；<code>bisenet_16k.yml</code> 仍缺（仓库已有同协议的 <code>bisenet.yml</code>，可先不处理）。</b></p>
+        </div>
+        <h3 class="sub-heading">6.2 权重回迁与结构核验（2026-10-13）</h3>
+        <p class="note">2026-10-13，从服务器回迁 <b>4 个消融 run 的 checkpoint</b>（各含 <code>model.pdparams</code> + <code>model.pdstates</code>），连同 <code>mobilesegv9.py</code> 类文件与 <code>repvit_v8_16.yml</code> 配置，全部落位进仓库。核验方法：<code>.pdparams</code> 为 numpy pickle，直接解包逐键比对形状——四个 run 的 backbone / arms / seg_heads / fuse 共 <b>94 个非 <code>cm</code> 键完全一致</b>（同一副骨架），唯一差异在上下文模块：</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>run（归档位置）</th><th>对应论文行</th><th>cm 结构（逐键实证）</th><th>匹配类</th><th>复算状态</th></tr></thead>
+            <tbody>
+              <tr><td><code>weights/repvit_v8_7/</code></td><td>TABLE III Ours · TABLE VI 末行</td><td>PPM[1,2,4]×3 + ASPP×3 + GAM，fusion 768 = 128×6</td><td><code>MobileSegV2</code></td><td><span class="tag ok">可跑</span>（注册在位）</td></tr>
+              <tr><td><code>weights/repvit_v8_9/</code></td><td>+GAM+PPM(124)+ASPP+FM</td><td><code>input_conv</code> + PPM×3 + ASPP×3 + GAM，fusion 640 = 128×5</td><td><b>无对应类</b>（原类仍缺）</td><td><span class="tag danger">待原类代码</span></td></tr>
+              <tr><td><code>weights/repvit_v8_15/</code></td><td>+GAM+ASPP</td><td>仅 ASPP(6,12,18)，无 GAM / PPM，fusion 384 = 128×3</td><td><code>MobileSegV4</code>（ASPPOnly）</td><td><span class="tag warn">yml 的 type 需改指 V4</span></td></tr>
+              <tr><td><code>weights/repvit_v8_16/</code></td><td>+GAM+PPM(1236)+FM</td><td>PPM(1,2,3,6)×4，fusion 672 = 160 + 128×4</td><td><code>MobileSegV9</code>（本次回迁安装）</td><td><span class="tag ok">可跑</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="tbl-cap">由此定案：<code>repvit_v8_7</code> 的 MobileSegV2 vs V3 口径分歧 = <b><code>MobileSegV2</code> 实现</b>（V3 逐元素相加后 fusion 应为 512，与权重不符）。注：回迁的 <code>_15</code> / <code>_16</code> 权重键层面<b>不含 <code>global_context</code></b>（即实际训练件为纯 ASPP / 纯 PPM），与其表行名「+GAM…」的叙事标签不完全对应——这是权重原生事实，照实记录。</p>
+        <div class="table-wrap compact">
+          <table>
+            <thead><tr><th>本次落位动作</th><th>位置</th></tr></thead>
+            <tbody>
+              <tr><td><code>mobilesegv9.py</code>（PPM-only 版，与 <code>_16</code> 权重结构精确一致）安装 + 注册</td><td><code>paddleseg/models/mobilesegv9.py</code>；<code>models/__init__.py</code> 增 <code>from .mobilesegv9 import MobileSegV9</code></td></tr>
+              <tr><td><code>repvit_v8_16.yml</code> 补回（消融配置至此全部就位）</td><td><code>configs/quick_start/repvit_v8_16.yml</code></td></tr>
+              <tr><td>4 个权重归档 + <code>.gitignore</code> 开例外（<code>!weights/*/model.pdparams</code> / <code>!weights/*/model.pdstates</code>），随仓库入库</td><td><code>weights/repvit_v8_{7,9,15,16}/</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout warning">
+          <div>
+            <span class="callout-label">仍缺 · 三件</span>
+            <h3>下一步要凑齐的东西</h3>
+          </div>
+          <p><b>① <code>repvit_v8_9</code> 的原类代码</b>——权重含 <code>input_conv</code> 与 fusion 640，仓库与本次回迁件中均无此实现；需从另一台电脑的 <code>消融实验.md</code>「<code>3.PPM不进行逐元素相加和ASPP以及自身进行拼接</code>」小节取回。若其类名同为 <code>MobileSegV9</code>，装入时需改名或并入同文件避免注册冲突。</p>
+          <p><b>② <code>repvit_v8_15.yml</code> 的 <code>type</code></b>——现值 <code>MobileSegV9</code>（PPM-only），与 ASPP-only 权重不匹配；把 <code>type</code> 改为 <code>MobileSegV4</code> 即可加载（或保留原 yml，跑 val 时用副本）。</p>
+          <p><b>③ 对比侧 <code>DeepLabV3p</code> / <code>PP-LiteSeg</code> 的权重</b>——仍无。另：<code>data/portrait14k</code> 数据集在另一台电脑上，未随本次回迁；本机（macOS）无 paddle 环境，本次仅完成静态落位与结构核验，未做 <code>import</code> 冒烟。</p>
         </div>
       </section>
       <!-- ==================== 7 eval extension ==================== -->
@@ -1008,6 +1044,7 @@ docker run --gpus all -it --rm --shm-size=8g \
               <tr><td>默认分支 / 首个提交</td><td><code>main</code> / <code>006735d2</code>「新增 Docker 训练镜像，并整理仓库到可发布状态」</td></tr>
               <tr><td>本地对应分支</td><td><code>codex/docker-training-env</code>（跟踪 <code>github/main</code>）</td></tr>
               <tr><td>推送内容</td><td>1958 个文件变更（含裁剪掉的 1853 个上游文件）；不含数据集、权重与日志</td></tr>
+              <tr><td>权重归档（v1.8 起）</td><td><code>weights/</code>——4 个消融 run 的 checkpoint 随仓库入库（约 30 MB）；<code>.gitignore</code> 对 <code>weights/*/model.pdparams</code> 与 <code>.pdstates</code> 开例外；数据集与 <code>output/</code> 仍不入库（见 §6.2）</td></tr>
               <tr><td>配套 iOS 仓库</td><td><code>https://github.com/Me106y/dashboard-ios</code>（public，分支 <code>main</code>）——§7.2 / §7.3 的端上改动（<code>DeviceStats</code>、<code>RestorationMetrics</code>、<code>eval_restoration_video.py</code>）已推送到此，提交 <code>5fe8b68</code></td></tr>
             </tbody>
           </table>
@@ -1020,12 +1057,12 @@ docker run --gpus all -it --rm --shm-size=8g \
           <h2>9 TODO（按可执行优先级）</h2>
           <p>对照专家意见逐条拆解，并按「现在能不能做」排序。<b>前缀 ★ 表示不依赖那批暂时拿不到的权重</b>——先把这些做完，等权重到手再补最后一块。</p>
         </div>
-        <div class="callout danger">
+        <div class="callout warning">
           <div>
-            <span class="callout-label">当前约束</span>
-            <h3>缺失权重在另一台服务器上，网络原因暂时取不到</h3>
+            <span class="callout-label">当前约束（2026-10-13 更新）</span>
+            <h3>权重已回迁 4 个；只剩 DeepLabV3p / PP-LiteSeg 与 <code>v8_9</code> 原类</h3>
           </div>
-          <p>受影响的是 TABLE III / TABLE VI 中<b>没有本地 checkpoint</b> 的行：TABLE III 的 DeepLabV3p、PP-LiteSeg、Ours（<code>repvit_v8_7</code>）；TABLE VI 的 <code>+GAM+ASPP</code>、<code>+GAM+PPM(1236)+FM</code>、<code>+GAM+PPM(124)+ASPP+FM</code>、末行 <code>+GAM+PPM(124)+ASPP+MSF</code>。这些行目前<b>无法求值</b>（权重不在 <code>output/</code>），但它们的配置都已就位，权重一到就能直接跑。<code>repvit_v8_1</code> 另有一处独立问题：它引用 <code>pretrained/repvitv1/best_model.pdparams</code>，该目录不在仓库里。</p>
+          <p>2026-10-13 从服务器回迁 <code>repvit_v8_7 / _9 / _15 / _16</code> 四个 checkpoint（归档于 <code>weights/</code>，结构核验见 §6.2）与 <code>MobileSegV9</code> 类、<code>repvit_v8_16.yml</code> 配置。<b>Ours（TABLE III / TABLE VI 末行）与 <code>repvit_v8_16</code>、<code>repvit_v8_15</code> 已具备复算条件</b>（_15 需把 <code>repvit_v8_15.yml</code> 的 <code>type</code> 改指 <code>MobileSegV4</code>，或取回「5.只有ASPP」原类补建）。仍缺：<b>①</b> <code>repvit_v8_9</code> 的原类代码（含 <code>input_conv</code> 的变体，需从另一台电脑取回）；<b>②</b> <code>DeepLabV3p</code>、<code>PP-LiteSeg</code> 的对比权重；<b>③</b> <code>data/portrait14k</code> 数据集（复算必需，在另一台电脑）。<code>repvit_v8_1</code> 的 <code>pretrained/repvitv1/…</code> 引用问题不变（旁支，不进表）。</p>
         </div>
         <h3 class="sub-heading">9.1 P0 —— 现在就能做</h3>
         <div class="table-wrap compact">
@@ -1055,14 +1092,14 @@ docker run --gpus all -it --rm --shm-size=8g \
             </tbody>
           </table>
         </div>
-        <h3 class="sub-heading">9.3 P2 —— 被权重卡住（拿到即可执行）</h3>
+        <h3 class="sub-heading">9.3 P2 —— 权重回迁与剩余缺口（2026-10-13 更新）</h3>
         <div class="table-wrap compact">
           <table>
             <thead><tr><th>#</th><th>任务</th><th>对应专家意见</th><th>说明</th></tr></thead>
             <tbody>
-              <tr><td>13</td><td>补齐 TABLE III 缺的三行（DeepLabV3p / PP-LiteSeg / Ours）与 TABLE VI 缺的四行的 mIoU / PSNR / SSIM / 时序一致性</td><td>③</td><td>配置已就位，权重到位后一条 <code>tools/val.py</code> 即可</td></tr>
-              <tr><td>14</td><td>Ours（<code>repvit_v8_7</code>）权重核验：确认它确实等于论文 TABLE III / TABLE VI 末行的那次训练</td><td>③</td><td>同时解决 §2.6 里 <code>MobileSegV2</code> vs <code>MobileSegV3</code> 的口径分歧</td></tr>
-              <tr><td>15</td><td>若权重始终取不回：改为重训那些行（<code>data/portrait14k</code> 在本地，可直接跑）</td><td>③</td><td>会得到不同数值，论文里需注明；建议只作补充</td></tr>
+              <tr><td>13</td><td>补齐 TABLE III 缺的两行（DeepLabV3p / PP-LiteSeg）与 TABLE VI 四行（Ours / <code>_9</code> / <code>_15</code> / <code>_16</code>）的 mIoU / PSNR / SSIM / 时序一致性</td><td>③</td><td>权重已回迁 <code>weights/</code>（§6.2）：Ours 与 <code>_16</code> 一条 <code>tools/val.py</code> 即可；<code>_15</code> 先改 yml 的 <code>type</code>；<code>_9</code> 等原类；DeepLabV3p / PP-LiteSeg 权重仍缺</td></tr>
+              <tr><td>14</td><td><span class="tag ok">已完成 2026-10-13</span> Ours（<code>repvit_v8_7</code>）权重核验：确认它确实等于论文 TABLE III / TABLE VI 末行的那次训练</td><td>③</td><td>融合层 <code>(128,768)</code> = 128×6 证实为 <code>MobileSegV2</code> 实现；<code>结果.md</code> 的「V3」口径不成立；§2.6 分歧解决</td></tr>
+              <tr><td>15</td><td>若 <code>v8_9</code> 原类始终取不回：改为重训该行（<code>data/portrait14k</code> 在另一台电脑，拿到后可跑）</td><td>③</td><td>其余三行权重已在手，无需重训；重训会得到不同数值，论文里需注明，建议只作补充</td></tr>
               <tr><td>16</td><td>论文表格口径最终对齐：哪一栏用<b>掩膜</b>口径、哪一栏用<b>恢复</b>口径，避免同一张表混用两个 SSIM</td><td>③</td><td>§7.1 与 §7.3 已把两套口径分清</td></tr>
             </tbody>
           </table>
@@ -1106,11 +1143,12 @@ docker run --gpus all -it --rm --shm-size=8g \
               <tr><td>1.5</td><td>2026-10-12</td><td><b>部署与托管。</b>新增 <code>Dockerfile</code> / <code>.dockerignore</code>（GPU 训练镜像，固定 <code>PYTHONPATH</code> 并带 import 自检）；<code>.gitignore</code> 排除数据集、产物与权重，把仓库收敛为纯代码（暂存 13.3 MB）。提交 <code>006735d2</code> 并推送到新建的 public 仓库 <code>Me106y/PaddleSeg</code>（<code>main</code>）。新增 §8。</td></tr>
               <tr><td>1.6</td><td>2026-10-12</td><td><b>TODO 清单。</b>按「现在能不能做」把专家六条意见拆成 P0 / P1 / P2：P0 八项不依赖那批暂时取不到的权重（叙事重构、离线批处理通道、合成遮挡生成器、恢复质量与端到端 baseline、主动书写量化、部署日志、录制与用户研究方案），P1 四项需时间/设备/被试，P2 四项被缺失权重卡住。新增 §9。</td></tr>
               <tr><td>1.7</td><td>2026-10-12</td><td>端上改动推送到配套仓库 <code>Me106y/dashboard-ios</code>（提交 <code>5fe8b68</code>：<code>DeviceStats</code>、<code>RestorationMetrics</code>、<code>FrameCapture.makeImage</code>、<code>eval_restoration_video.py</code>）；§8.2 补记该仓库。</td></tr>
+              <tr><td>1.8</td><td>2026-10-13</td><td><b>权重回迁与结构核验。</b>从服务器回迁 4 个消融 checkpoint（<code>repvit_v8_7 / _9 / _15 / _16</code>）与 <code>MobileSegV9</code> 类、<code>repvit_v8_16.yml</code> 配置：类已安装注册、消融配置 100% 就位、权重归档至新目录 <code>weights/</code>（<code>.gitignore</code> 开例外，随仓库入库）。逐键解包核验：<code>_7</code> = <code>MobileSegV2</code>（<b>V2 vs V3 口径定案</b>）、<code>_16</code> = <code>MobileSegV9</code>（PPM-only）、<code>_15</code> = <code>MobileSegV4</code> 结构（yml 的 <code>type</code> 待改）、<code>_9</code> 原类仍缺。同步刷新 §1.1 / §1.2 / §2.1–2.3 / §2.6–2.7 的到位状态，新增 §6.1 / §6.2，重写 §9 约束与 9.3。</td></tr>
             </tbody>
           </table>
         </div>
         <div class="document-control">
-          <span>PaddleSeg 实验代码精简方案 · v1.7（已执行）· 2026-10-12</span>
+          <span>PaddleSeg 实验代码精简方案 · v1.8（已执行）· 2026-10-13</span>
           <span>依据论文：DigiBoard (IEEE TMC) · 目标仓库：<code>Desktop\PaddleSeg</code></span>
         </div>
       </section>

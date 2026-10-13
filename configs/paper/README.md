@@ -35,15 +35,27 @@
 
 ## 已知缺口（复现前必读）
 
-1. **有 2 个配置无法逐字还原**（两份记录里都没有它们的 yml 内容）：
-   `repvit_v8_16.yml`（`消融实验.md` 中该 yml 块为空）与 `bisenet_16k.yml`（`BisnetV2_16k` 小节
-   只有 train 命令、没有 yml 段）。前者在 `TABLE VI` 中以 `只有PPM` 的实测值（0.9023 / 11.48 ms）
-   留档；两者的超参与同系列模板一致，需要时可按模板重建——但那是「重建」而非「还原」。
-2. 部分消融配置引用的**模型类在当前仓库中不存在**，因此这些配置「已还原但暂不可运行」：
-   `MobileSegV6`（`repvit_v8_11.yml`）、`MobileSegV7`（`repvit_v8_12.yml`）、`MobileSegV9`
-   （`repvit_v8_15.yml`、`repvit_v8_16.yml`），以及骨干 `RepViTBackboneFinal`（`repvit_final.yml`）。
-   这些类的源码记录在 `消融实验.md` 各小节的代码块中，需要时可据此补建。
-3. `MobileSegV4`（`repvit_v8_9.yml`）与 `MobileSegV5`（`repvit_v8_10.yml`）的**文件存在但未注册**，
-   需要在 `paddleseg/models/__init__.py` 里 import 后才能加载。
-4. **口径冲突待你裁定**：`repvit_v8_7.yml` 在 `消融实验.md` 中声明 `type: MobileSegV2`，而 `结果.md`
-   记录同一次训练用的是 `MobileSegV3`。指标（0.9096 / 10.64 ms）两边一致，但模型类名不一致。
+**2026-10-13 更新：** 4 个消融 run 的权重（`repvit_v8_7 / _9 / _15 / _16`）已回迁并归档至仓库根目录
+`weights/<run>/`（含 `model.pdparams` + `model.pdstates`），`repvit_v8_16.yml` 亦已找回原件。val 示例：
+
+```bash
+python tools/val.py --config configs/quick_start/repvit_v8_16.yml \
+  --model_path weights/repvit_v8_16/model.pdparams
+```
+
+对比侧 `DeepLabV3p`、`PP-LiteSeg` 的权重仍无。结构核验详情见
+`docs/experiment-slimming-plan.html` §6.2。
+
+1. `repvit_v8_16.yml` 已从服务器回迁（原件）；只剩 `bisenet_16k.yml` 无法逐字还原（`BisnetV2_16k`
+   小节只有 train 命令、没有 yml 段），需要时按同系列模板重建——那是「重建」而非「还原」。
+2. **`MobileSegV9` 已安装**（PPM-only 版，与 `_16` 权重结构精确一致，2026-10-13）。仍缺的类：
+   `MobileSegV6`（`repvit_v8_11.yml`）、`MobileSegV7`（`repvit_v8_12.yml`）、骨干
+   `RepViTBackboneFinal`（`repvit_final.yml`），以及 **`repvit_v8_9` 的原类实现**
+   （其权重含 `input_conv` 与 5 分支融合 `(128, 640)`，仓库现有类均不匹配；源码在 `消融实验.md`
+   `3.PPM不进行逐元素相加和ASPP以及自身进行拼接` 小节）。
+3. `MobileSegV4 / V5 / V11` 均已注册（v1.3）。注意：`repvit_v8_15.yml` 声明 `type: MobileSegV9`，
+   但其权重为 **ASPP-only 结构（= `MobileSegV4` 的 `ASPPOnlyContextModule`）**，直接加载会键不匹配；
+   跑该行时把 `type` 改指 `MobileSegV4`，或取回「`5.只有ASPP`」原类补建。
+4. **口径冲突已定案（2026-10-13）**：`repvit_v8_7` 权重融合层 `(128, 768)` = 128×6 →
+   `MobileSegV2` 实现（PPM 三支与 ASPP 三支全部拼接）；`结果.md` 的「V3」记录不成立
+   （V3 逐元素相加后 fusion 应为 512）。

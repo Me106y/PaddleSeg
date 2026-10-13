@@ -138,3 +138,9 @@ pretrained/
 *.pdiparams
 *.pdiparams.info
 *.pdmodel
+
+# ---------------------------------------------------------------------------
+# 例外：论文可复现权重归档（weights/<run>/，见 docs/experiment-slimming-plan.html）
+# ---------------------------------------------------------------------------
+!weights/*/model.pdparams
+!weights/*/model.pdstates

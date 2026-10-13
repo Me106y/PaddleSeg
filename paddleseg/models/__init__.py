@@ -26,6 +26,7 @@ from .mobilesegv2 import MobileSegV2
 from .mobilesegv3 import MobileSegV3
 from .mobilesegv4 import MobileSegV4
 from .mobilesegv5 import MobileSegV5
+from .mobilesegv9 import MobileSegV9
 from .mobilesegv10 import MobileSegV10
 from .mobilesegv11 import MobileSegV11
 from .mobilesegv12 import MobileSegV12
